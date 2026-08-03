@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 外部存储公共目录（API < 29 直接文件写入时使用） -->
+    <external-path name="external_files" path="." />
+    <!-- 应用缓存目录（SAF 降级时可能写入缓存） -->
+    <cache-path name="cache" path="." />
+</paths>

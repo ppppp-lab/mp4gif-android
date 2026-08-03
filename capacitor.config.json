@@ -1,0 +1,12 @@
+{
+  "appId": "com.local.mp4gif",
+  "appName": "MP4转GIF工具",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0E1014",
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

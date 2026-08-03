@@ -1,0 +1,32 @@
+{
+  "name": "mp4-to-gif-android",
+  "version": "1.0.0",
+  "description": "MP4转GIF限大小工具 Android 版（Capacitor + ffmpeg-kit）",
+  "main": "index.js",
+  "scripts": {
+    "build:web": "echo no-op",
+    "cap:sync": "cap sync android",
+    "cap:copy": "cap copy android",
+    "build:apk": "cap copy android && cd android && .\\gradlew assembleRelease"
+  },
+  "keywords": [
+    "mp4",
+    "gif",
+    "ffmpeg",
+    "android",
+    "capacitor"
+  ],
+  "author": "local",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "expo-gifski": "^1.0.2",
+    "gifuct-js": "^2.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "webpack-cli": "^7.2.1"
+  }
+}

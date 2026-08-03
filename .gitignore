@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# IDE
+.idea/
+*.iml
+
+# Secrets / signing keys
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Android build outputs
+build/
+build_*/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+.gradle/
+.externalNativeBuild/
+.cxx/
+local.properties
+captures/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.hprof

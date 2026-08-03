@@ -1,0 +1,109 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+// 禁用 buildKotlinToolingMetadata 任务（Gradle 8.x 兼容性问题）
+project.tasks.matching { it.name == 'buildKotlinToolingMetadata' }.configureEach {
+    it.doNotTrackState('Incompatible with current Gradle version')
+}
+
+android {
+    namespace "com.local.mp4gif"
+    compileSdk rootProject.ext.compileSdkVersion
+
+    // 发布签名配置：从 gradle.properties 读取，不硬编码密码
+    signingConfigs {
+        release {
+            storeFile file(RELEASE_STORE_FILE)
+            storePassword RELEASE_STORE_PASSWORD
+            keyAlias RELEASE_KEY_ALIAS
+            keyPassword RELEASE_KEY_PASSWORD
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.local.mp4gif"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        resConfigs 'zh', 'en'  // 只保留中英语言资源，移除其他50+语言
+        ndk {
+            // 只保留 arm64-v8a：覆盖所有现代真机，移除 x86_64（省 1.4MB）
+            abiFilters 'arm64-v8a'
+        }
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#L61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 正式发布签名（keystore 文件在 app/ 目录下，密码在 gradle.properties）
+            signingConfig signingConfigs.release
+        }
+        debug {
+            // debug签名也用release key，这样release和debug都是同一个签名
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            // 压缩 .so 文件到 APK 内（减小下载体积，代价是安装后占用更大）
+            useLegacyPackaging = true
+        }
+        // 排除不必要的 META-INF 文件
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/ASL2.0'
+        exclude 'META-INF/AL2.0'
+        exclude 'META-INF/LGPL2.1'
+        exclude 'META-INF/*.kotlin_module'
+        exclude 'kotlin/*.kotlin_builtins'
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    // ffmpeg-kit 社区维护分支（原 arthenica 已于 2025-04-01 退役，Maven Central 二进制已移除）
+    // min 变体：仅含 FFmpeg 内置编解码器/滤镜（H.264解码、palettegen/paletteuse、GIF编码等全部内置）
+    // h264_mediacodec 硬件解码在所有变体中均启用，LGPL v3.0
+    // 相比 full 变体节省约 12MB .so 体积（26.7MB → 14.7MB）
+    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:8.1.2'
+    // JNA (Java Native Access) - gifski 原生库通过 JNA 调用 Rust FFI
+    implementation 'net.java.dev.jna:jna:5.14.0@aar'
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

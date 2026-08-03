@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A0C10" />
+  <title>Pocket Meme Studio</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="home.css" />
+</head>
+<body>
+<div class="home">
+
+  <!-- 品牌标题 -->
+  <header class="home-header">
+    <h1 class="brand">POCKET<br>MEME</h1>
+    <p class="brand-sub">选个模式开始</p>
+    <p class="brand-tip">做表情包需先将视频转成 GIF，再加工成表情包</p>
+  </header>
+
+  <!-- 双模式入口 -->
+  <main class="home-modes">
+
+    <!-- MP4 转 GIF -->
+    <a class="mode-card" href="converter.html">
+      <div class="mode-preview mode-preview-gif">
+        <span class="mode-icon">▶</span>
+        <span class="mode-icon-label">GIF</span>
+      </div>
+      <div class="mode-info">
+        <h2 class="mode-name">MP4 转 GIF</h2>
+        <p class="mode-desc">视频裁剪、调帧率、限体积，输出高质量 GIF</p>
+      </div>
+    </a>
+
+    <!-- 表情包工坊 -->
+    <a class="mode-card" href="meme.html">
+      <div class="mode-preview mode-preview-meme">
+        <span class="meme-top-text">TOP TEXT</span>
+        <span class="meme-bottom-text">BOTTOM TEXT</span>
+      </div>
+      <div class="mode-info">
+        <h2 class="mode-name">表情包工坊</h2>
+        <p class="mode-desc">加文字、贴纸、滤镜、涂鸦，做专属表情包</p>
+      </div>
+    </a>
+
+  </main>
+
+  <!-- 底部 -->
+  <footer class="home-footer">
+    <span class="footer-text">Pocket Meme Studio</span>
+  </footer>
+
+</div>
+</body>
+</html>
