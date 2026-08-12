@@ -153,7 +153,6 @@
     memeSource: $('memeSource'), sourceName: $('sourceName'), btnChangeSource: $('btnChangeSource'),
     // 侧边栏
     memeSidebar: $('memeSidebar'),
-    memeSourceMini: $('memeSourceMini'), btnChangeSourceMini: $('btnChangeSourceMini'),
     // 底部弹出面板
     memePanelOverlay: $('memePanelOverlay'),
     memePanel: $('memePanel'),
@@ -1058,7 +1057,6 @@
     if (dom.btnImportClipboard) dom.btnImportClipboard.onclick = importFromClipboard;
     dom.btnChangeSource.onclick = importSource;
     // 侧边栏底部按钮
-    dom.btnChangeSourceMini.onclick = importSource;
     if (dom.btnGoConverter) dom.btnGoConverter.onclick = () => location.href = 'index.html';
     dom.btnExport.onclick = exportMeme;
     dom.btnShare.onclick = shareMeme;
@@ -1701,8 +1699,6 @@
     dom.memeSource.style.display = 'flex';
     dom.memeSidebar.classList.remove('hidden');
     dom.memeSidebar.style.display = 'flex';
-    dom.memeSourceMini.classList.remove('hidden');
-    dom.memeSourceMini.style.display = 'flex';
     if (dom.btnExport) dom.btnExport.disabled = false;
     dom.btnShare.disabled = false;
     dom.sourceName.textContent = state.sourceName;
@@ -3520,7 +3516,9 @@
     const tctx = tmp.getContext('2d');
     // 渲染当前完整画面（不含选中框）
     const oldSel = state.selectedId;
-    state.selectedId = null;
+    state.selectedId = snapshot.layers && snapshot.layers.length
+      ? snapshot.layers[snapshot.layers.length - 1].id
+      : null;
     render();
     tctx.drawImage(dom.canvas, 0, 0);
     state.selectedId = oldSel;
@@ -4206,14 +4204,19 @@
     state.drawPaths = snapshot.drawPaths;
     state.filter = snapshot.filter;
     state.border = snapshot.border;
-    state.selectedId = null;
+    state.selectedId = snapshot.layers && snapshot.layers.length
+      ? snapshot.layers[snapshot.layers.length - 1].id
+      : null;
 
     // 恢复画布尺寸
     if (snapshot.canvasWidth && snapshot.canvasHeight) {
+      const resized = dom.canvas.width !== snapshot.canvasWidth || dom.canvas.height !== snapshot.canvasHeight;
       state.canvasWidth = snapshot.canvasWidth;
       state.canvasHeight = snapshot.canvasHeight;
-      dom.canvas.width = snapshot.canvasWidth;
-      dom.canvas.height = snapshot.canvasHeight;
+      if (resized) {
+        dom.canvas.width = snapshot.canvasWidth;
+        dom.canvas.height = snapshot.canvasHeight;
+      }
     }
 
     state.blurSourceData = null; state.blurSourceKey = '';
@@ -4836,6 +4839,7 @@
     dom.canvas.classList.remove('drawing');
     renderLayerList();
     render();
+    pushHistory();
   }
 
   // 画笔全屏渲染：底图 + 涂鸦（不画文字图层）
@@ -4959,7 +4963,6 @@
       drawFsTouch.drawing = false;
       state.currentPath = null;
       if (state.drawToolMode !== 'blur') renderDrawFs();
-      pushHistory();
     }
   }
 

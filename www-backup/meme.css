@@ -374,36 +374,6 @@
   margin-top: auto;
 }
 
-.meme-sidebar-mini-btn {
-  width: 32px;
-  height: 32px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: var(--dim);
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--transition);
-}
-.meme-sidebar-mini-btn:active { background: var(--border); color: var(--text); }
-.meme-sidebar-quick {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%) !important;
-  color: var(--text) !important;
-  border: none !important;
-  font-size: 14px;
-}
-.meme-sidebar-quick:active { transform: scale(0.93); }
-
-.meme-source-mini {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  align-items: center;
-}
-
 /* ============================================================
    底部弹出面板
    ============================================================ */
