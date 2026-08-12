@@ -112,6 +112,9 @@
     keepScreenOn: () => appBridge.keepScreenOn(),
     releaseScreenOn: () => appBridge.releaseScreenOn(),
 
+    // 退出应用（隐私协议不同意时使用）
+    exitApp: () => appBridge.exitApp().then(() => true),
+
     // 设备内存信息
     getDeviceMemory: () =>
       appBridge.getDeviceMemory().then((r) => r || { totalMB: 2048, availMB: 512 }),

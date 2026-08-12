@@ -61,11 +61,16 @@ async function shot(name, delay = 400) {
   console.log('saved', name);
 }
 
-// 1. 首页默认
+// 1. 首次启动：隐私协议
 await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle0' });
-await shot('01-首页.png');
+await shot('01-隐私协议.png');
 
-// 2. MP4转GIF 默认（进入页面即选择视频的空状态）
+// 2. 同意后进入首页
+await page.evaluate(() => localStorage.setItem('mp4gif_privacy_consent', '1'));
+await page.reload({ waitUntil: 'networkidle0' });
+await shot('02-首页.png');
+
+// 3. MP4转GIF 默认（进入页面即选择视频的空状态）
 await page.evaluateOnNewDocument(() => {
   window.api = {
     gifskiCheck: async () => ({ available: true, version: 'Gifski 1.4.4' }),
@@ -77,15 +82,15 @@ await page.evaluateOnNewDocument(() => {
   };
 });
 await page.goto(`http://127.0.0.1:${PORT}/converter.html`, { waitUntil: 'networkidle0' });
-await shot('02-MP4转GIF-默认.png');
+await shot('03-MP4转GIF-默认.png');
 
-// 3. 表情包工坊默认（导入素材的空状态）
+// 4. 表情包工坊默认（导入素材的空状态）
 await page.goto(`http://127.0.0.1:${PORT}/meme.html`, { waitUntil: 'networkidle0' });
-await shot('03-表情包工坊-默认.png');
+await shot('04-表情包工坊-默认.png');
 
-// 4. 隐私政策
+// 5. 隐私政策
 await page.goto(`http://127.0.0.1:${PORT}/privacy.html`, { waitUntil: 'networkidle0' });
-await shot('04-隐私政策.png');
+await shot('05-隐私政策.png');
 
 await browser.close();
 server.close();

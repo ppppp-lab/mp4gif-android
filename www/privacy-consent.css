@@ -1,0 +1,119 @@
+/* ============================================================
+   privacy-consent.css — 首次启动隐私协议拦截层
+   ============================================================ */
+
+#privacyConsentOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(8, 10, 14, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.consent-card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 88vh;
+  max-height: 88dvh;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.consent-head {
+  flex-shrink: 0;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.consent-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+}
+.consent-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.consent-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 18px 18px;
+}
+.consent-scroll h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 12px 0 6px;
+}
+.consent-scroll h3:first-child {
+  margin-top: 0;
+}
+.consent-scroll p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 8px;
+  overflow-wrap: break-word;
+}
+
+.consent-actions {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.consent-actions .btn-consent {
+  width: 100%;
+}
+
+.btn-consent {
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-consent-primary {
+  background: var(--accent);
+  color: #FFFFFF;
+}
+.btn-consent-primary:active {
+  background: var(--accent-hover);
+}
+.btn-consent-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-consent-ghost:active {
+  background: var(--surface-2);
+}
+
+.consent-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 18px;
+  text-align: center;
+}
+.consent-denied-text {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}

@@ -434,6 +434,14 @@ public class AppBridgePlugin extends Plugin {
         call.resolve();
     }
 
+    @PluginMethod
+    public void exitApp(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            getActivity().finishAffinity();
+        });
+        call.resolve();
+    }
+
     // =========================================================================
     // 5) openImageDialog —— 图片文件选择（PNG/JPG/WEBP/GIF）
     // =========================================================================
