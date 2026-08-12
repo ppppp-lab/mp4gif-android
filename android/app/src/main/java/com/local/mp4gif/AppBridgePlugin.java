@@ -24,10 +24,12 @@ import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -546,6 +548,49 @@ public class AppBridgePlugin extends Plugin {
                 JSObject ret = new JSObject();
                 ret.put("success", false);
                 call.resolve(ret);
+            }
+        }).start();
+    }
+
+    // =========================================================================
+    // 6.5) readFileBase64 —— 读取本地文件并返回 Base64（GIF 解析兜底）
+    // =========================================================================
+
+    @PluginMethod
+    public void readFileBase64(PluginCall call) {
+        String path = call.getString("path");
+        if (path == null || path.isEmpty()) {
+            call.reject("缺少 path 参数");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                byte[] bytes;
+                if (path.startsWith("content://")) {
+                    try (InputStream is = getContext().getContentResolver().openInputStream(Uri.parse(path));
+                         ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+                        if (is == null) throw new IOException("无法打开输入流");
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = is.read(buf)) > 0) bos.write(buf, 0, n);
+                        bytes = bos.toByteArray();
+                    }
+                } else {
+                    try (InputStream is = new FileInputStream(new File(path));
+                         ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = is.read(buf)) > 0) bos.write(buf, 0, n);
+                        bytes = bos.toByteArray();
+                    }
+                }
+
+                JSObject ret = new JSObject();
+                ret.put("base64", android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP));
+                call.resolve(ret);
+            } catch (Exception e) {
+                call.reject(e.getMessage() == null ? "读取文件失败" : e.getMessage());
             }
         }).start();
     }

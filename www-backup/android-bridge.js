@@ -60,6 +60,10 @@
     saveBase64: (path, base64) =>
       appBridge.saveBase64({ path, base64 }).then((r) => r && r.success),
 
+    // 读取本地文件为 Base64（GIF 解析兜底）
+    readFileBase64: (path) =>
+      appBridge.readFileBase64({ path }).then((r) => r && r.base64),
+
     // 表情包分享临时路径
     getMemeSharePath: (name) =>
       appBridge.getMemeSharePath({ name }).then((r) => r && r.path),

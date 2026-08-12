@@ -1551,6 +1551,22 @@
               // 继续尝试下一个路径
             }
           }
+          // Android 本地文件偶尔 fetch 不到，改用原生读取兜底
+          if ((!arrayBuffer || arrayBuffer.byteLength === 0) && window.api && window.api.readFileBase64) {
+            try {
+              const b64 = await window.api.readFileBase64(path);
+              if (b64) {
+                const bin = atob(b64);
+                const bytes = new Uint8Array(bin.length);
+                for (let i = 0; i < bin.length; i++) {
+                  bytes[i] = bin.charCodeAt(i);
+                }
+                arrayBuffer = bytes.buffer;
+              }
+            } catch (readErr) {
+              // 继续走静态加载
+            }
+          }
           if (!arrayBuffer || arrayBuffer.byteLength === 0) {
             throw new Error('所有路径 fetch 均失败');
           }
