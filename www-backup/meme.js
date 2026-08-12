@@ -4351,8 +4351,12 @@
       if (!outputPath) { state.selectedId = oldSel; render(); return; }
 
       if (window.api.saveBase64) {
-        await window.api.saveBase64(outputPath, base64);
-        showToast('导出成功', 'ok');
+        const saved = await window.api.saveBase64(outputPath, base64);
+        if (saved) {
+          showToast('导出成功', 'ok');
+        } else {
+          showToast('导出失败：无法写入所选文件', 'error');
+        }
       } else {
         const a = document.createElement('a');
         a.href = dataUrl; a.download = defaultName; a.click();

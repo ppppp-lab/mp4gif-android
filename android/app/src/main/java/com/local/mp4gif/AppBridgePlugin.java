@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -200,22 +201,32 @@ public class AppBridgePlugin extends Plugin {
         if (defaultName == null || defaultName.isEmpty()) {
             defaultName = "output.gif";
         }
-        // 确保 .gif 后缀
-        if (!defaultName.toLowerCase().endsWith(".gif")) {
-            defaultName = defaultName + ".gif";
-        }
 
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("image/gif");
+        String lower = defaultName.toLowerCase();
+        if (lower.endsWith(".png")) {
+            intent.setType("image/png");
+        } else if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+            intent.setType("image/jpeg");
+        } else if (lower.endsWith(".webp")) {
+            intent.setType("image/webp");
+        } else {
+            if (!lower.endsWith(".gif")) {
+                defaultName = defaultName + ".gif";
+            }
+            intent.setType("image/gif");
+        }
         intent.putExtra(Intent.EXTRA_TITLE, defaultName);
 
         try {
             startActivityForResult(call, intent, "saveGifResult");
         } catch (ActivityNotFoundException e) {
             // 极少数设备不支持 SAF，回退到缓存路径
-            String safeName = defaultName.replaceAll("(?i)\\.gif$", "");
-            File cacheFile = new File(getCacheDir(), "gif_output_" + safeName + ".gif");
+            int dot = defaultName.lastIndexOf('.');
+            String safeName = dot > 0 ? defaultName.substring(0, dot) : defaultName;
+            String ext = dot > 0 ? defaultName.substring(dot + 1) : "gif";
+            File cacheFile = new File(getCacheDir(), "gif_output_" + safeName + "." + ext);
             JSObject ret = new JSObject();
             ret.put("path", cacheFile.getAbsolutePath());
             call.resolve(ret);
@@ -508,14 +519,24 @@ public class AppBridgePlugin extends Plugin {
                 }
                 byte[] bytes = android.util.Base64.decode(data, android.util.Base64.DEFAULT);
 
-                File outFile = new File(path);
-                File parentDir = outFile.getParentFile();
-                if (parentDir != null && !parentDir.exists()) {
-                    parentDir.mkdirs();
-                }
+                if (path.startsWith("content://")) {
+                    Uri uri = Uri.parse(path);
+                    try (OutputStream os = getContext().getContentResolver().openOutputStream(uri)) {
+                        if (os == null) {
+                            throw new IOException("无法打开输出流");
+                        }
+                        os.write(bytes);
+                    }
+                } else {
+                    File outFile = new File(path);
+                    File parentDir = outFile.getParentFile();
+                    if (parentDir != null && !parentDir.exists()) {
+                        parentDir.mkdirs();
+                    }
 
-                try (FileOutputStream fos = new FileOutputStream(outFile)) {
-                    fos.write(bytes);
+                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                        fos.write(bytes);
+                    }
                 }
 
                 JSObject ret = new JSObject();
