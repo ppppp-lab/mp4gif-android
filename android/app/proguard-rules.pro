@@ -26,11 +26,6 @@
     public <init>(...);
 }
 
-# --- FFmpegKit（native 方法 + 反射加载库） ---
--keep class com.arthenica.ffmpegkit.** { *; }
--dontwarn com.arthenica.**
--keep class com.arthenica.** { *; }
-
 # --- Expo Gifski 插件 ---
 -keep class expo.modules.gifski.** { *; }
 -dontwarn expo.modules.gifski.**

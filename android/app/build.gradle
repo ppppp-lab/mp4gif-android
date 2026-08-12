@@ -6,17 +6,34 @@ project.tasks.matching { it.name == 'buildKotlinToolingMetadata' }.configureEach
     it.doNotTrackState('Incompatible with current Gradle version')
 }
 
+// 发布签名密钥：真实密码只从本地 keystore.properties 或环境变量读取，不入库
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file("keystore.properties")
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def resolveSecret = { String name, String fallback ->
+    def value = keystoreProps.getProperty(name)
+    if (value == null || value.isEmpty()) {
+        value = System.getenv(name)
+    }
+    return (value == null || value.isEmpty()) ? fallback : value
+}
+def releaseKeyAlias = resolveSecret('RELEASE_KEY_ALIAS', 'mp4gif')
+def releaseStorePassword = resolveSecret('RELEASE_STORE_PASSWORD', 'CHANGE_ME')
+def releaseKeyPassword = resolveSecret('RELEASE_KEY_PASSWORD', 'CHANGE_ME')
+
 android {
     namespace "com.local.mp4gif"
     compileSdk rootProject.ext.compileSdkVersion
 
-    // 发布签名配置：从 gradle.properties 读取，不硬编码密码
+    // 发布签名配置：密钥路径来自 gradle.properties，密码来自本地 keystore.properties
     signingConfigs {
         release {
             storeFile file(RELEASE_STORE_FILE)
-            storePassword RELEASE_STORE_PASSWORD
-            keyAlias RELEASE_KEY_ALIAS
-            keyPassword RELEASE_KEY_PASSWORD
+            storePassword releaseStorePassword
+            keyAlias releaseKeyAlias
+            keyPassword releaseKeyPassword
         }
     }
 
@@ -29,8 +46,8 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         resConfigs 'zh', 'en'  // 只保留中英语言资源，移除其他50+语言
         ndk {
-            // 只保留 arm64-v8a：覆盖所有现代真机，移除 x86_64（省 1.4MB）
-            abiFilters 'arm64-v8a'
+            // 全量打包 jniLibs 中已有的 gifski ABI，兼容真机与模拟器
+            abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'
         }
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -84,11 +101,6 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
-    // ffmpeg-kit 社区维护分支（原 arthenica 已于 2025-04-01 退役，Maven Central 二进制已移除）
-    // min 变体：仅含 FFmpeg 内置编解码器/滤镜（H.264解码、palettegen/paletteuse、GIF编码等全部内置）
-    // h264_mediacodec 硬件解码在所有变体中均启用，LGPL v3.0
-    // 相比 full 变体节省约 12MB .so 体积（26.7MB → 14.7MB）
-    implementation 'io.github.maitrungduc1410:ffmpeg-kit-min:8.1.2'
     // JNA (Java Native Access) - gifski 原生库通过 JNA 调用 Rust FFI
     implementation 'net.java.dev.jna:jna:5.14.0@aar'
     testImplementation "junit:junit:$junitVersion"

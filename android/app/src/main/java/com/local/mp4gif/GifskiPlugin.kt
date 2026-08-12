@@ -5,6 +5,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
@@ -33,14 +35,14 @@ import java.util.concurrent.atomic.AtomicBoolean
  * GifskiPlugin
  * -----------------------------------------------------------------------------
  * Capacitor 插件，使用 gifski 原生库（Rust）进行高质量 GIF 编码。
- * 替代 FFmpeg 两步调色板流程，实现单步高质量编码。
+ * 使用 gifski 原生库实现单步高质量编码。
  *
  * 事件（通过 notifyListeners 推送）：
  *   - gifski:progress → { percent: double, frameProgress: double }
  *   - gifski:done     → { outputPath: string }   （公共 Movies 路径或 SAF URI）
  *   - gifski:error    → { kind: string, message: string }
  *
- * 与 FFmpegBridgePlugin 的事件模型保持一致：startConversion 立即返回 jobId，
+ * 事件模型：startConversion 立即返回 jobId，
  * 编码完成后通过事件通知前端，避免前端 await 阻塞。
  */
 @CapacitorPlugin(name = "Gifski")
@@ -51,7 +53,7 @@ class GifskiPlugin : Plugin() {
     /**
      * 单个编码任务的可变状态。
      * 使用 volatile 保护单字段可见性；复合操作由 ConcurrentHashMap 保证键级别安全。
-     * 与 FFmpegBridgePlugin.JobState 设计一致，支持并发与取消。
+     * 支持并发与取消。
      */
     private class JobState(val jobId: String) {
         val cancelled = AtomicBoolean(false)
@@ -82,6 +84,64 @@ class GifskiPlugin : Plugin() {
     }
 
     // =========================================================================
+    // 1.5) probeVideo —— 视频元数据探测
+    // =========================================================================
+
+    @PluginMethod
+    fun probeVideo(call: PluginCall) {
+        val path = call.getString("path")
+        if (path.isNullOrEmpty()) {
+            call.reject("未提供文件路径")
+            return
+        }
+
+        Thread {
+            var retriever: MediaMetadataRetriever? = null
+            try {
+                retriever = MediaMetadataRetriever()
+                val r = retriever
+                when {
+                    path.startsWith("/") -> r.setDataSource(path)
+                    path.startsWith("content://") -> r.setDataSource(context, Uri.parse(path))
+                    else -> r.setDataSource(path)
+                }
+
+                val durationMs = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toDoubleOrNull() ?: 0.0
+                val rawWidth = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+                val rawHeight = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+                val rotation = readVideoRotation(r, path)
+                val isSideways = rotation == 90 || rotation == 270
+                val width = if (isSideways) rawHeight else rawWidth
+                val height = if (isSideways) rawWidth else rawHeight
+
+                var fps = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)?.toDoubleOrNull() ?: 0.0
+                if (fps <= 0) {
+                    val frameCount = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT)?.toLongOrNull() ?: 0L
+                    if (frameCount > 0 && durationMs > 0) {
+                        fps = frameCount / (durationMs / 1000.0)
+                    }
+                }
+
+                val sizeBytes = if (path.startsWith("/")) File(path).length() else 0L
+
+                val ret = JSObject()
+                ret.put("width", width)
+                ret.put("height", height)
+                ret.put("rotation", rotation)
+                ret.put("duration", durationMs / 1000.0)
+                ret.put("fps", fps)
+                ret.put("sizeBytes", sizeBytes)
+                mainHandler.post { call.resolve(ret) }
+            } catch (e: Exception) {
+                val message = e.message ?: "未知错误"
+                mainHandler.post { call.reject("探测失败: $message") }
+            } finally {
+                try { retriever?.release() } catch (_: Exception) {}
+            }
+        }.start()
+    }
+
+    // =========================================================================
     // 2) encodeGif —— GIF 编码（核心）
     // =========================================================================
 
@@ -108,7 +168,7 @@ class GifskiPlugin : Plugin() {
         val loop = call.getInt("loop", 0) ?: 0
         val fast = call.getBoolean("fast", false) ?: false
 
-        // 生成 jobId（与 FFmpegBridge 格式一致）
+        // 生成 jobId
         val jobId = System.currentTimeMillis().toString() + "-" + (Math.random() * 0xFFFFFF).toLong().toString(16)
         val job = JobState(jobId)
         val defaultName = call.getString("defaultName", "output.gif") ?: "output.gif"
@@ -134,7 +194,7 @@ class GifskiPlugin : Plugin() {
 
         jobs[jobId] = job
 
-        // 立即返回 jobId，编码在后台异步进行（与 FFmpegBridge 一致的事件驱动模型）
+        // 立即返回 jobId，编码在后台异步进行
         val ret = JSObject()
         ret.put("jobId", jobId)
         call.resolve(ret)
@@ -185,9 +245,21 @@ class GifskiPlugin : Plugin() {
                 return
             }
 
-            // 获取视频分辨率
-            val videoWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 480
-            val videoHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 360
+            // 获取视频分辨率与旋转元数据（手机竖屏视频通常存储为横屏 + rotation 元数据）
+            val rawWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 480
+            val rawHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 360
+            val rotation = readVideoRotation(retriever, inputPath)
+            val isPortrait = rotation == 90 || rotation == 270
+            // 部分设备取帧时已经自动转正，再用元数据转一次会变成横屏；取一帧实际尺寸判断
+            val probeFrame = retriever.getFrameAtTime((startSec * 1_000_000).toLong(), MediaMetadataRetriever.OPTION_CLOSEST)
+            val probeW = probeFrame?.width ?: rawWidth
+            val probeH = probeFrame?.height ?: rawHeight
+            val frameAlreadyCorrected = isPortrait && probeH > probeW
+            probeFrame?.recycle()
+            val needsRotate = rotation == 180 || (isPortrait && !frameAlreadyCorrected)
+            val videoWidth = if (isPortrait) rawHeight else rawWidth
+            val videoHeight = if (isPortrait) rawWidth else rawHeight
+            Log.i("GifskiPlugin", "旋转: rotation=$rotation, 源=${rawWidth}x${rawHeight}, 帧=${probeW}x${probeH}, 已转正=$frameAlreadyCorrected, 需要旋转=$needsRotate, 目标方向=${videoWidth}x${videoHeight}")
 
             // 计算目标分辨率（aspect-fit：保持宽高比，不裁剪）
             val (targetWidth, targetHeight) = if (height <= 0) {
@@ -226,9 +298,11 @@ class GifskiPlugin : Plugin() {
                     continue
                 }
 
-                // 缩放（aspect-fit，保持完整画面不裁剪）
-                val scaledBitmap = resizeBitmapAspectFit(bitmap, targetWidth, targetHeight)
-                if (scaledBitmap !== bitmap) bitmap.recycle()
+                // 只有需要时才旋转（避免设备已自动转正后二次旋转），然后缩放（aspect-fit，保持完整画面不裁剪）
+                val orientedBitmap = if (needsRotate) rotateBitmap(bitmap, rotation) else bitmap
+                val scaledBitmap = resizeBitmapAspectFit(orientedBitmap, targetWidth, targetHeight)
+                if (orientedBitmap !== bitmap) bitmap.recycle()
+                if (scaledBitmap !== orientedBitmap) orientedBitmap.recycle()
 
                 // 保存为临时 PNG
                 val tmpFile = File(cacheDir, "gifski_frame_${UUID.randomUUID()}.png")
@@ -442,7 +516,7 @@ class GifskiPlugin : Plugin() {
 
     /**
      * aspect-fit 缩放：保持宽高比，完整保留画面内容（不裁剪）。
-     * 与 FFmpegBridge 的 scale=w:-1 行为一致。
+     * 等比缩放，保持宽高比不裁剪。
      * 如果目标尺寸与源尺寸比例不同，会在宽或高方向留白（黑边）。
      */
     private fun resizeBitmapAspectFit(bitmap: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
@@ -474,6 +548,54 @@ class GifskiPlugin : Plugin() {
 
         canvas.drawBitmap(bitmap, matrix, paint)
         return result
+    }
+
+    private fun normalizeRotation(raw: Int): Int {
+        val r = raw % 360
+        return if (r < 0) r + 360 else r
+    }
+
+    /** 通过 MediaExtractor 读取视频格式中的旋转元数据（API 23+，兼容性更好） */
+    private fun readRotationFromExtractor(path: String): Int {
+        return try {
+            val extractor = MediaExtractor()
+            try {
+                when {
+                    path.startsWith("/") -> extractor.setDataSource(path)
+                    path.startsWith("content://") -> extractor.setDataSource(context, Uri.parse(path), null)
+                    else -> extractor.setDataSource(path)
+                }
+                for (i in 0 until extractor.trackCount) {
+                    val format = extractor.getTrackFormat(i)
+                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                    if (mime.startsWith("video/") && format.containsKey(MediaFormat.KEY_ROTATION)) {
+                        return normalizeRotation(format.getInteger(MediaFormat.KEY_ROTATION))
+                    }
+                }
+                0
+            } finally {
+                extractor.release()
+            }
+        } catch (_: Throwable) {
+            0
+        }
+    }
+
+    /** 综合读取视频旋转：优先 MediaExtractor，回退 MediaMetadataRetriever */
+    private fun readVideoRotation(retriever: MediaMetadataRetriever, path: String): Int {
+        val metaRotation = normalizeRotation(
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+        )
+        val extractorRotation = readRotationFromExtractor(path)
+        return if (extractorRotation != 0) extractorRotation else metaRotation
+    }
+
+    /** 把 MediaMetadataRetriever 取到的原始帧按视频旋转元数据转正 */
+    private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
+        if (degrees == 0) return bitmap
+        val matrix = Matrix()
+        matrix.postRotate(degrees.toFloat())
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     private fun emitProgress(frameProgress: Double, totalProgress: Double) {
@@ -676,6 +798,184 @@ class GifskiPlugin : Plugin() {
             cleanupTempFiles(framePaths)
             emitError(job, "generic", "编码失败: ${e.message}")
         }
+    }
+
+    // =========================================================================
+    // 3.5) benchmark —— 设备性能基准
+    // =========================================================================
+
+    @PluginMethod
+    fun benchmark(call: PluginCall) {
+        Thread {
+            try {
+                // 生成 12 帧 480x270 渐变 PNG，用 gifski 编码 1 秒 12fps GIF 测耗时
+                val cacheDir = context.cacheDir
+                val framePaths = mutableListOf<String>()
+                val frames = 12
+                val width = 480
+                val height = 270
+                for (i in 0 until frames) {
+                    val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(bmp)
+                    canvas.drawColor(Color.rgb(20 + i * 8, 40 + i * 12, 90 + i * 8))
+                    val file = File(cacheDir, "bench_${System.currentTimeMillis()}_$i.png")
+                    FileOutputStream(file).use { out -> bmp.compress(Bitmap.CompressFormat.PNG, 100, out) }
+                    bmp.recycle()
+                    framePaths.add(file.absolutePath)
+                }
+
+                val start = System.currentTimeMillis()
+                val outFile = File(cacheDir, "bench_out_${System.currentTimeMillis()}.gif")
+                val options = GifskiOptions(
+                    width = width.toUInt(),
+                    height = height.toUInt(),
+                    quality = 85.toUByte(),
+                    repeat = 0,
+                    fast = false,
+                    fps = 12f
+                )
+                encodeGif(framePaths, outFile.absolutePath, options, object : GifskiProgressCallback {
+                    override fun onProgress(progress: GifskiProgress) {}
+                })
+                val elapsedSec = (System.currentTimeMillis() - start) / 1000.0
+                cleanupTempFiles(framePaths)
+                outFile.delete()
+
+                val ret = JSObject()
+                ret.put("seconds", elapsedSec)
+                mainHandler.post { call.resolve(ret) }
+            } catch (e: Exception) {
+                val ret = JSObject()
+                ret.put("seconds", -1)
+                mainHandler.post { call.resolve(ret) }
+            }
+        }.start()
+    }
+
+    // =========================================================================
+    // 3.6) probeEstSize —— 采样编码预估体积与耗时
+    // =========================================================================
+
+    @PluginMethod
+    fun probeEstSize(call: PluginCall) {
+        val inputPath = call.getString("inputPath")
+        if (inputPath.isNullOrEmpty()) {
+            call.reject("缺少 inputPath 参数")
+            return
+        }
+        val startSec = call.getDouble("startSec", 0.0) ?: 0.0
+        val width = call.getInt("width", 480) ?: 480
+        val height = call.getInt("height", -1) ?: -1
+        val fps = call.getInt("fps", 12) ?: 12
+        val qualityValue = call.getInt("qualityValue", 85) ?: 85
+        val sampleSec = call.getDouble("sampleSec", 1.0) ?: 1.0
+
+        Thread {
+            var retriever: MediaMetadataRetriever? = null
+            val tempPngPaths = mutableListOf<String>()
+            val resolved = java.util.concurrent.atomic.AtomicBoolean(false)
+            fun settle(ret: JSObject) {
+                if (resolved.compareAndSet(false, true)) {
+                    mainHandler.post { call.resolve(ret) }
+                }
+            }
+            // 兜底：最迟 20 秒返回，避免前端导出流程被卡死
+            Thread {
+                Thread.sleep(20000)
+                if (resolved.compareAndSet(false, true)) {
+                    val ret = JSObject()
+                    ret.put("bytes", -1)
+                    ret.put("elapsedMs", -1)
+                    ret.put("sampleSec", sampleSec)
+                    mainHandler.post { call.resolve(ret) }
+                }
+            }.start()
+            try {
+                retriever = MediaMetadataRetriever()
+                val r = retriever
+                when {
+                    inputPath.startsWith("/") -> r.setDataSource(inputPath)
+                    inputPath.startsWith("content://") -> r.setDataSource(context, Uri.parse(inputPath))
+                    else -> r.setDataSource(inputPath)
+                }
+
+                val rawWidth = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 480
+                val rawHeight = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 360
+                val rotation = readVideoRotation(r, inputPath)
+                val isSideways = rotation == 90 || rotation == 270
+                val videoWidth = if (isSideways) rawHeight else rawWidth
+                val videoHeight = if (isSideways) rawWidth else rawHeight
+
+                val (targetWidth, targetHeight) = if (height <= 0) {
+                    val w = if (width <= 0) 480 else width
+                    val scale = w.toDouble() / videoWidth
+                    Pair(w, Math.round(videoHeight * scale).toInt())
+                } else {
+                    Pair(if (width > 0) width else videoWidth, height)
+                }
+
+                val frameInterval = 1.0 / fps
+                val frameCount = Math.ceil(sampleSec / frameInterval).toInt().coerceAtMost(60)
+                val cacheDir = context.cacheDir
+                val startTime = System.currentTimeMillis()
+
+                for (i in 0 until frameCount) {
+                    val timestamp = startSec + i * frameInterval
+                    val timeUs = (timestamp * 1_000_000).toLong()
+                    val bitmap = r.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST) ?: continue
+                    val oriented = rotateBitmap(bitmap, rotation)
+                    val scaled = resizeBitmapAspectFit(oriented, targetWidth, targetHeight)
+                    if (oriented !== bitmap) bitmap.recycle()
+                    if (scaled !== oriented) oriented.recycle()
+                    val tmp = File(cacheDir, "probe_frame_${System.currentTimeMillis()}_$i.png")
+                    FileOutputStream(tmp).use { out -> scaled.compress(Bitmap.CompressFormat.PNG, 100, out) }
+                    scaled.recycle()
+                    tempPngPaths.add(tmp.absolutePath)
+                }
+
+                if (tempPngPaths.isEmpty()) {
+                    cleanupTempFiles(tempPngPaths)
+                    val ret = JSObject()
+                    ret.put("bytes", -1)
+                    ret.put("elapsedMs", -1)
+                    ret.put("sampleSec", sampleSec)
+                    settle(ret)
+                    return@Thread
+                }
+
+                val outFile = File(cacheDir, "probe_out_${System.currentTimeMillis()}.gif")
+                val options = GifskiOptions(
+                    width = targetWidth.toUInt(),
+                    height = targetHeight.toUInt(),
+                    quality = qualityValue.coerceIn(1, 100).toUByte(),
+                    repeat = 0,
+                    fast = false,
+                    fps = fps.toFloat()
+                )
+                encodeGif(tempPngPaths, outFile.absolutePath, options, object : GifskiProgressCallback {
+                    override fun onProgress(progress: GifskiProgress) {}
+                })
+                val elapsedMs = System.currentTimeMillis() - startTime
+                val bytes = outFile.length()
+                cleanupTempFiles(tempPngPaths)
+                outFile.delete()
+
+                val ret = JSObject()
+                ret.put("bytes", bytes)
+                ret.put("elapsedMs", elapsedMs)
+                ret.put("sampleSec", sampleSec)
+                settle(ret)
+            } catch (e: Throwable) {
+                cleanupTempFiles(tempPngPaths)
+                val ret = JSObject()
+                ret.put("bytes", -1)
+                ret.put("elapsedMs", -1)
+                ret.put("sampleSec", sampleSec)
+                settle(ret)
+            } finally {
+                try { retriever?.release() } catch (_: Exception) {}
+            }
+        }.start()
     }
 
     // =========================================================================

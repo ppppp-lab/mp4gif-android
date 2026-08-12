@@ -12,6 +12,7 @@ node_modules/
 *.pfx
 *.pem
 *.key
+keystore.properties
 
 # Android build outputs
 build/

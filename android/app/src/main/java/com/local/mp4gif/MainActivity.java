@@ -6,7 +6,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        registerPlugin(FFmpegBridgePlugin.class);
+        registerPlugin(AppBridgePlugin.class);
         registerPlugin(GifskiPlugin.class);
         super.onCreate(savedInstanceState);
     }

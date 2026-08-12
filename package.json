@@ -1,7 +1,7 @@
 {
   "name": "mp4-to-gif-android",
   "version": "1.0.0",
-  "description": "MP4转GIF限大小工具 Android 版（Capacitor + ffmpeg-kit）",
+  "description": "MP4转GIF限大小工具 Android 版（Capacitor + Gifski）",
   "main": "index.js",
   "scripts": {
     "build:web": "echo no-op",
@@ -12,7 +12,6 @@
   "keywords": [
     "mp4",
     "gif",
-    "ffmpeg",
     "android",
     "capacitor"
   ],

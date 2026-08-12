@@ -1,6 +1,6 @@
 # MP4 to GIF Android
 
-Android tool for converting MP4 videos to GIF, built with Capacitor, ffmpeg-kit, gifuct-js, and expo-gifski.
+Android tool for converting MP4 videos to GIF, built with Capacitor, gifuct-js, and expo-gifski (Gifski engine).
 
 ## Structure
 
