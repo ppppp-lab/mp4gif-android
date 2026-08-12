@@ -2153,12 +2153,29 @@
     }
   }
 
-  function drawBorder(w, h) {
+  // 把当前所有叠加内容（边框/涂鸦/文字/贴纸/高级图层）画到指定上下文，用于导出或预览
+  function renderOverlaysToCtx(targetCtx, w, h, time) {
+    drawBorder(w, h, targetCtx);
+    ensureDrawCanvas(w, h);
+    drawCtx.clearRect(0, 0, w, h);
+    state.drawPaths.forEach(p => {
+      if (p.type === 'mosaic') drawPath(p, targetCtx);
+      else drawPath(p, drawCtx);
+    });
+    targetCtx.drawImage(drawCanvas, 0, 0);
+    state.layers.forEach(l => drawLayerToCtx(l, targetCtx));
+    if (state.advLayers && state.advLayers.length > 0) {
+      renderAdvLayersToCtx(targetCtx, time || 0);
+    }
+  }
+
+  function drawBorder(w, h, targetCtx) {
     if (state.border.style === 'none') return;
+    const c = targetCtx || ctx;
     const colors = { white: '#FFFFFF', black: '#000000', red: '#FF4747' };
-    ctx.strokeStyle = colors[state.border.style] || '#FFFFFF';
-    ctx.lineWidth = state.border.width * 2;
-    ctx.strokeRect(0, 0, w, h);
+    c.strokeStyle = colors[state.border.style] || '#FFFFFF';
+    c.lineWidth = state.border.width * 2;
+    c.strokeRect(0, 0, w, h);
   }
 
   function drawPath(p, targetCtx) {
@@ -2446,8 +2463,38 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(l.emoji, 0, 0);
+    } else if (l.type === 'draw' && l.image) {
+      ctx.drawImage(l.image, -l.width / 2, -l.height / 2, l.width, l.height);
     }
     ctx.restore();
+  }
+
+  // 把一条画笔笔迹栅格化成独立图层（可选中、拖动、缩放、旋转）
+  function penPathToLayer(p) {
+    const pts = p && p.points;
+    if (!pts || pts.length === 0) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    pts.forEach(pt => {
+      if (pt.x < minX) minX = pt.x;
+      if (pt.y < minY) minY = pt.y;
+      if (pt.x > maxX) maxX = pt.x;
+      if (pt.y > maxY) maxY = pt.y;
+    });
+    const pad = Math.max(8, (p.width || 4) * 2);
+    const w = Math.max(4, Math.ceil(maxX - minX) + pad * 2);
+    const h = Math.max(4, Math.ceil(maxY - minY) + pad * 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const c = canvas.getContext('2d');
+    c.translate(pad - minX, pad - minY);
+    drawPath(p, c);
+    return {
+      type: 'draw', id: state.nextId++,
+      image: canvas,
+      x: (minX + maxX) / 2, y: (minY + maxY) / 2,
+      width: w, height: h,
+      rotation: 0, flipped: false,
+    };
   }
 
   // ========== 高级编辑图层动态渲染 ==========
@@ -3286,20 +3333,25 @@
   }
 
   function drawSelectionBox(l) {
+    const box = getLayerBox(l);
+    const w = box.w, h = box.h;
     ctx.save();
-    let w, h;
-    if (l.type === 'text') {
-      w = l.size * 3; h = l.size * 2;
-    } else {
-      w = l.size; h = l.size;
-    }
     // 虚线橙色选中框
     ctx.strokeStyle = '#FF6B3D';
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
-    ctx.lineDashOffset = 0;
     ctx.strokeRect(l.x - w / 2 - 4, l.y - h / 2 - 4, w + 8, h + 8);
-    ctx.setLineDash([]); // 恢复实线，避免影响后续绘制
+    ctx.setLineDash([]);
+    // 旋转手柄
+    const handleY = l.y - h / 2 - 26;
+    ctx.beginPath();
+    ctx.moveTo(l.x, l.y - h / 2 - 4);
+    ctx.lineTo(l.x, handleY);
+    ctx.stroke();
+    ctx.fillStyle = '#FF6B3D';
+    ctx.beginPath();
+    ctx.arc(l.x, handleY, 9, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
@@ -3342,6 +3394,12 @@
 
     renderTextList(); renderLayerList(); render();
     pushHistory();
+  }
+
+  function getLayerBox(l) {
+    if (l.type === 'text') return { w: l.size * 3, h: l.size * 2 };
+    if (l.type === 'draw') return { w: l.width || l.size, h: l.height || l.size };
+    return { w: l.size, h: l.size };
   }
 
   // ========== 文字管理 ==========
@@ -3397,8 +3455,8 @@
       const realIdx = state.layers.length - 1 - idx;
       const item = document.createElement('div');
       item.className = 'layer-item' + (l.id === state.selectedId ? ' active' : '');
-      const icon = l.type === 'text' ? '字' : l.emoji;
-      const name = l.type === 'text' ? (l.text.replace(/\n/g, ' ').slice(0, 15) || '空文字') : ('贴纸 ' + l.emoji);
+      const icon = l.type === 'text' ? '字' : l.type === 'draw' ? '✎' : l.emoji;
+      const name = l.type === 'text' ? (l.text.replace(/\n/g, ' ').slice(0, 15) || '空文字') : l.type === 'draw' ? '涂鸦' : ('贴纸 ' + l.emoji);
       item.innerHTML = `
         <div class="layer-icon">${escapeHtml(icon)}</div>
         <span class="layer-name">${escapeHtml(name)}</span>
@@ -3434,8 +3492,17 @@
     } else if (act === 'flip') {
       l.flipped = !l.flipped;
     } else if (act === 'dup') {
-      const copy = JSON.parse(JSON.stringify(l));
-      copy.id = state.nextId++; copy.x += 20; copy.y += 20;
+      let copy;
+      if (l.type === 'draw' && l.image) {
+        const c = document.createElement('canvas');
+        c.width = l.image.width; c.height = l.image.height;
+        c.getContext('2d').drawImage(l.image, 0, 0);
+        copy = Object.assign({}, l, { id: state.nextId++, image: c });
+      } else {
+        copy = JSON.parse(JSON.stringify(l));
+        copy.id = state.nextId++;
+      }
+      copy.x += 20; copy.y += 20;
       state.layers.push(copy);
       state.selectedId = copy.id;
     } else if (act === 'del') {
@@ -3942,6 +4009,7 @@
       const l = state.layers[i];
       let hw, hh;
       if (l.type === 'text') { hw = l.size * 2; hh = l.size; }
+      else if (l.type === 'draw') { hw = (l.width || l.size) / 2; hh = (l.height || l.size) / 2; }
       else { hw = l.size / 2; hh = l.size / 2; }
       if (Math.abs(x - l.x) < hw && Math.abs(y - l.y) < hh) return l;
     }
@@ -4009,6 +4077,22 @@
 
     if (e.touches.length === 1) {
       const pos = getCanvasPos(e);
+      // 旋转手柄：选中图层上方的小圆点
+      const selected = getSelected();
+      if (selected) {
+        const box = getLayerBox(selected);
+        const hx = selected.x;
+        const hy = selected.y - box.h / 2 - 26;
+        if (Math.hypot(pos.x - hx, pos.y - hy) < 24) {
+          touch.mode = 'rotate';
+          touch.id = selected.id;
+          touch.startAngle = Math.atan2(pos.y - selected.y, pos.x - selected.x);
+          touch.origRotation = selected.rotation || 0;
+          state.selectedId = selected.id;
+          renderTextList(); renderLayerList(); render();
+          return;
+        }
+      }
       const hit = hitTest(pos.x, pos.y);
       if (hit) {
         touch.mode = 'drag'; touch.id = hit.id; touch.type = hit.type;
@@ -4057,6 +4141,14 @@
       const pos = getCanvasPos(e);
       const l = state.layers.find(x => x.id === touch.id);
       if (l) { l.x = touch.ox + (pos.x - touch.sx); l.y = touch.oy + (pos.y - touch.sy); render(); }
+    } else if (touch.mode === 'rotate' && e.touches.length === 1) {
+      const pos = getCanvasPos(e);
+      const l = state.layers.find(x => x.id === touch.id);
+      if (l) {
+        const angle = Math.atan2(pos.y - l.y, pos.x - l.x);
+        l.rotation = touch.origRotation + (angle - touch.startAngle);
+        render();
+      }
     } else if (touch.mode === 'scale' && e.touches.length === 2) {
       const t1 = e.touches[0], t2 = e.touches[1];
       const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
@@ -4074,13 +4166,25 @@
     if (state.magicWandMode) return;
 
     if (state.drawMode && touch.drawing) {
+      const donePath = state.currentPath;
       touch.drawing = false;
       state.currentPath = null;
+      // 画笔笔迹转成独立图层，可选中、拖动、缩放、旋转
+      if (donePath && donePath.type === 'pen') {
+        state.drawPaths = state.drawPaths.filter(p => p !== donePath);
+        const layer = penPathToLayer(donePath);
+        if (layer) {
+          state.layers.push(layer);
+          state.selectedId = layer.id;
+          renderLayerList();
+        }
+      }
       pushHistory();
+      render();
       return;
     }
     if (e.touches.length === 0) {
-      if (touch.mode === 'drag' || touch.mode === 'scale') pushHistory();
+      if (touch.mode === 'drag' || touch.mode === 'scale' || touch.mode === 'rotate') pushHistory();
       touch.mode = 'none'; touch.id = null;
     } else if (e.touches.length === 1 && touch.mode === 'scale') {
       touch.mode = 'drag';
@@ -4094,8 +4198,17 @@
   // ========== 历史记录 ==========
   function pushHistory(includeSource) {
     state.history = state.history.slice(0, state.historyIndex + 1);
+    // 画笔图层的 Canvas 不能直接 JSON 序列化，转成 dataURL 保存
+    const layersForHistory = state.layers.map(l => {
+      if (l.type === 'draw' && l.image) {
+        const copy = Object.assign({}, l, { imageDataURL: l.image.toDataURL('image/png') });
+        delete copy.image;
+        return copy;
+      }
+      return l;
+    });
     const snapshot = {
-      layers: state.layers,
+      layers: layersForHistory,
       drawPaths: state.drawPaths,
       filter: state.filter,
       border: state.border,
@@ -4130,7 +4243,23 @@
 
   function restoreHistory() {
     const snapshot = JSON.parse(state.history[state.historyIndex]);
-    state.layers = snapshot.layers;
+    state.layers = (snapshot.layers || []).map(l => {
+      if (l && l.type === 'draw' && l.imageDataURL) {
+        const layer = Object.assign({}, l);
+        delete layer.imageDataURL;
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = img.width; c.height = img.height;
+          c.getContext('2d').drawImage(img, 0, 0);
+          layer.image = c;
+          render();
+        };
+        img.src = l.imageDataURL;
+        return layer;
+      }
+      return l;
+    });
     state.drawPaths = snapshot.drawPaths;
     state.filter = snapshot.filter;
     state.border = snapshot.border;
@@ -4359,6 +4488,11 @@
     // 每帧都从头渲染（独立完整画面），避免累积绘制的 disposal 状态污染
     const tempPaths = [];
     try {
+      // 合成画布：底帧 + 滤镜 + 所有叠加图层
+      const composeCanvas = document.createElement('canvas');
+      composeCanvas.width = gw; composeCanvas.height = gh;
+      const composeCtx = composeCanvas.getContext('2d');
+
       for (let i = 0, fi = 0; i < totalFrames; i += frameStep, fi++) {
         // 每帧重置 accCtx，从头累积渲染到当前帧
         accCtx.fillStyle = _gifBgColor;
@@ -4369,10 +4503,22 @@
           drawGifFrameToCanvas(accCtx, state.gifFrames[j], prevJ, gw, gh);
         }
 
-        // 从accCanvas绘制到exportCanvas
+        // 合成完整画面：底帧 + 滤镜 + 边框 + 涂鸦 + 文字/贴纸/高级图层
+        composeCtx.clearRect(0, 0, gw, gh);
+        const f2 = state.filter;
+        let filterStr = FILTER_PRESETS[f2.preset] || '';
+        if (f2.brightness !== FILTER_DEFAULT) filterStr += ` brightness(${f2.brightness}%)`;
+        if (f2.contrast !== FILTER_DEFAULT) filterStr += ` contrast(${f2.contrast}%)`;
+        if (f2.saturate !== FILTER_DEFAULT) filterStr += ` saturate(${f2.saturate}%)`;
+        composeCtx.filter = filterStr || 'none';
+        composeCtx.drawImage(accCanvas, 0, 0, gw, gh);
+        composeCtx.filter = 'none';
+        renderOverlaysToCtx(composeCtx, gw, gh, frameTimes[i]);
+
+        // 从合成画布缩放到导出尺寸
         exportCtx.fillStyle = _gifBgColor;
         exportCtx.fillRect(0, 0, exportW, exportH);
-        exportCtx.drawImage(accCanvas, 0, 0, exportW, exportH);
+        exportCtx.drawImage(composeCanvas, 0, 0, exportW, exportH);
         const dataUrl = exportCanvas.toDataURL('image/png');
         const base64 = dataUrl.split(',')[1];
 
@@ -4406,6 +4552,7 @@
       // 渲染完成，释放 canvas 引用并等待 GC 清理内存
       accCanvas.width = 0; accCanvas.height = 0;
       exportCanvas.width = 0; exportCanvas.height = 0;
+      composeCanvas.width = 0; composeCanvas.height = 0;
       await new Promise(r => setTimeout(r, 500));
 
       // 计算GIF帧率
@@ -4697,6 +4844,8 @@
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       c.fillText(l.emoji, 0, 0);
+    } else if (l.type === 'draw' && l.image) {
+      c.drawImage(l.image, -l.width / 2, -l.height / 2, l.width, l.height);
     }
     c.restore();
   }
@@ -4733,6 +4882,16 @@
   }
 
   function closeDrawFs() {
+    // 把本次画笔的笔迹转成独立图层，退出后仍可选中、旋转、缩放、拖拽
+    const penPaths = state.drawPaths.filter(p => p.type === 'pen');
+    if (penPaths.length) {
+      state.drawPaths = state.drawPaths.filter(p => p.type !== 'pen');
+      const layers = penPaths.map(penPathToLayer).filter(Boolean);
+      if (layers.length) {
+        state.layers.push(...layers);
+        state.selectedId = layers[layers.length - 1].id;
+      }
+    }
     dom.drawFullscreen.classList.add('hidden');
     dom.drawFullscreen.style.display = 'none';
     state.drawMode = false;
@@ -5122,6 +5281,22 @@
         cropFs.origW = cropFs.w; cropFs.origH = cropFs.h;
         return;
       }
+    }
+
+    // 直接触摸边框也能调整对应边（n/s/e/w）
+    const edgeHit = 14;
+    const onLeft = Math.abs(pos.x - cropFs.x) < edgeHit && pos.y >= cropFs.y && pos.y <= cropFs.y + cropFs.h;
+    const onRight = Math.abs(pos.x - (cropFs.x + cropFs.w)) < edgeHit && pos.y >= cropFs.y && pos.y <= cropFs.y + cropFs.h;
+    const onTop = Math.abs(pos.y - cropFs.y) < edgeHit && pos.x >= cropFs.x && pos.x <= cropFs.x + cropFs.w;
+    const onBottom = Math.abs(pos.y - (cropFs.y + cropFs.h)) < edgeHit && pos.x >= cropFs.x && pos.x <= cropFs.x + cropFs.w;
+    const edgeMode = onLeft ? 'w' : onRight ? 'e' : onTop ? 'n' : onBottom ? 's' : null;
+    if (edgeMode) {
+      cropFs.dragging = true;
+      cropFs.dragMode = edgeMode;
+      cropFs.startX = pos.x; cropFs.startY = pos.y;
+      cropFs.origX = cropFs.x; cropFs.origY = cropFs.y;
+      cropFs.origW = cropFs.w; cropFs.origH = cropFs.h;
+      return;
     }
 
     // 检查是否在裁剪框内（移动）

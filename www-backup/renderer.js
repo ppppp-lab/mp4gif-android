@@ -3,10 +3,9 @@
 // MP4 转 GIF 限大小工具 · 全部界面交互逻辑
 // ============================================================
 // 依赖（普通 <script> 顺序加载，先于此文件）：
-//   android-bridge.js → window.api（桥接 Capacitor FFmpegBridge 插件）
+//   android-bridge.js → window.api（桥接 Capacitor AppBridge + Gifski 插件）
 //   estimate.js       → window.Estimate
-//   commands.js        → window.Commands
-// 与桌面版差异：移除全部拖拽逻辑（移动端无拖拽），新增移动端 DOM 重排。
+// 手机版（Android/Capacitor），仅使用 Gifski 引擎。
 // ============================================================
 
 (function () {
@@ -15,7 +14,7 @@
   // ============ DOM 引用 ============
   const $ = (id) => document.getElementById(id);
   const dom = {
-    ffmpegStatus: $('ffmpegStatus'), ffmpegVer: $('ffmpegVer'),
+    engineStatus: $('engineStatus'), engineVer: $('engineVer'),
     dropzone: $('dropzone'), dropzoneText: $('dropzoneText'),
     btnSelectFile: $('btnSelectFile'),
     resSelect: $('resSelect'), customWhWrap: $('customWhWrap'),
@@ -67,7 +66,6 @@
     limit20: false,
     sizeLimitMB: parseFloat(localStorage.getItem('sizeLimitMB')) || Estimate.DEFAULT_MAX_MB,
     strategy: 1,
-    ffmpegAvailable: false,
     effective: null,   // recompute 派生的实际导出参数
     converting: false,
     jobId: null,
@@ -118,36 +116,36 @@
 
   // ============ 启动流程 ============
   async function init() {
-    // 1. FFmpeg 检测：更新状态灯；失败禁用导入与导出。
+    // 1. Gifski 检测：更新状态灯；失败禁用导入与导出。
     try {
-      const res = await window.api.ffmpegCheck();
-      state.ffmpegAvailable = !!res.available;
-      if (res.available) {
-        dom.ffmpegStatus.classList.add('ok');
-        dom.ffmpegVer.textContent = res.version || '已就绪';
+      const res = await window.api.gifskiCheck();
+      const available = !!(res && res.available);
+      if (available) {
+        dom.engineStatus.classList.add('ok');
+        dom.engineVer.textContent = (res && res.version) || '已就绪';
       } else {
-        dom.ffmpegStatus.classList.remove('ok');
-        dom.ffmpegVer.textContent = '未安装';
-        showModal({
-          title: '未找到系统 FFmpeg',
-          body: '未检测到系统 FFmpeg，请先安装并将 <strong>ffmpeg</strong> 加入环境变量 PATH，再重启本工具。<br><br>导入与导出功能已禁用。',
-          actions: [{ label: '我知道了', type: 'primary' }],
-        });
+        dom.engineStatus.classList.remove('ok');
+        dom.engineVer.textContent = '不可用';
         setImportEnabled(false);
         dom.btnExport.disabled = true;
+        showModal({
+          title: 'Gifski 引擎不可用',
+          body: 'Gifski 编码库加载失败，请确认设备/模拟器架构受支持后重试。<br><span class="muted mono">' + escapeHtml((res && res.version) || '') + '</span>',
+          actions: [{ label: '我知道了', type: 'primary' }],
+          error: true,
+        });
       }
     } catch (e) {
-      state.ffmpegAvailable = false;
-      dom.ffmpegStatus.classList.remove('ok');
-      dom.ffmpegVer.textContent = '检测失败';
-      showToast('FFmpeg 检测失败：' + (e.message || e), 'error');
+      dom.engineStatus.classList.remove('ok');
+      dom.engineVer.textContent = '检测失败';
+      showToast('Gifski 检测失败：' + (e.message || e), 'error');
     }
 
     bindEvents();
     resetGaugeAndCmd();
 
     // 2. 后台运行性能校准（不阻塞启动，校准完成后自动刷新预估耗时）
-    if (state.ffmpegAvailable && window.api.benchmark) {
+    if (window.api.benchmark) {
       window.api.benchmark().then((benchSec) => {
         if (benchSec && benchSec > 0) {
           Estimate.setDeviceBench(benchSec);
@@ -172,64 +170,6 @@
     dom.btnSelectFile.disabled = !en;
   }
 
-  // ============ 采样校准：用真实编码测体积+耗时 ============
-  function runContentCalibration() {
-    if (!state.ffmpegAvailable || !state.sourcePath || !window.api.probeEstSize) return;
-    // 取当前输出参数（与 recompute 中 effective 一致）
-    const src = state.sourceMeta;
-    const outW = state.width;
-    const outH = state.height > 0 ? state.height : Estimate.computeHeight(outW, src.width, src.height);
-    const fps = state.fps;
-    const palette = state.palette;
-    const quality = state.quality;
-
-    const videoDur = state.endSec - state.startSec;
-    // 采样时长：取 2 秒或视频时长的 30%（取较小值），最少 1 秒
-    // 2 秒采样比 1 秒更准：FFmpeg 初始化开销分摊更合理
-    const sampleSec = Math.max(1.0, Math.min(2.0, videoDur * 0.3));
-    if (videoDur < 1.0) return; // 视频太短，不校准
-
-    // 采样位置：截取区间中间（更代表平均复杂度，避免开头黑屏/logo）
-    const sampleStart = state.startSec + (videoDur - sampleSec) / 2;
-
-    dom.gaugeEstText.innerHTML = '校准中…';
-
-    window.api.probeEstSize({
-      inputPath: state.sourcePath,
-      startSec: sampleStart,
-      width: outW,
-      height: outH,
-      fps: fps,
-      palette: palette,
-      // 直接传质量值（1-100），原生层据此自动选择抖动/缩放算法和 max_colors
-      qualityValue: typeof quality === 'number' ? quality : (quality === 'smaller' ? 30 : 85),
-      sampleSec: sampleSec
-    }).then((r) => {
-      if (r && r.bytes > 0 && r.elapsedMs > 0) {
-        // 每秒视频输出的字节数 = 实际字节数 / 采样秒数
-        // 体积预估偏高 15%，略微保守避免实际超限
-        const bytesPerSec = r.bytes / r.sampleSec * 1.15;
-        // 每秒视频的编码耗时 = 实际耗时 / 采样秒数
-        // 不加额外系数，由 estimateTime 中的 durationScale 修正长视频误差
-        const timePerSec = (r.elapsedMs / 1000) / r.sampleSec;
-        Estimate.setContentCalibration(
-          bytesPerSec, timePerSec,
-          outW, outH, fps,
-          palette, quality
-        );
-        appendLog('info', '采样校准完成：' + (r.bytes / 1024).toFixed(1) + 'KB/' + r.sampleSec + 's，编码耗时 ' + (r.elapsedMs / 1000).toFixed(2) + 's，每秒耗时 ' + timePerSec.toFixed(2) + 's/s');
-        // 刷新预估
-        if (state.sourcePath) recompute();
-      } else {
-        appendLog('info', '采样校准失败，使用公式估算');
-        if (state.sourcePath) recompute();
-      }
-    }).catch(() => {
-      appendLog('info', '采样校准异常，使用公式估算');
-      if (state.sourcePath) recompute();
-    });
-  }
-
   // 更新 Dock 上限制数字的显示
   function updateDockLimitDisplay() {
     dom.btnDockLimit.textContent = state.sizeLimitMB + ' MB';
@@ -249,13 +189,12 @@
   function bindEvents() {
     // ---- 点击拖拽区 = 选择文件（移动端：点击/触摸触发选择器） ----
     dom.dropzone.addEventListener('click', () => {
-      if (!state.ffmpegAvailable || dom.btnSelectFile.disabled) return;
+      if (dom.btnSelectFile.disabled) return;
       dom.btnSelectFile.click();
     });
 
     dom.btnSelectFile.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (!state.ffmpegAvailable) return;
       const paths = await window.api.openVideoDialog(false);
       if (paths && paths.length) loadVideo(paths[0]);
     });
@@ -263,14 +202,13 @@
     // ---- 移动端：点击空状态区 / 预览区触发导入 ----
     // 移动端 topbar 的 dropzone-wrap 被隐藏，"点击导入视频" 空状态需可点击
     dom.emptyState.addEventListener('click', () => {
-      if (!state.ffmpegAvailable) return;
       window.api.openVideoDialog(false).then((paths) => {
         if (paths && paths.length) loadVideo(paths[0]);
       });
     });
     // 视频已加载后，双击预览区可更换视频
     dom.previewWrap.addEventListener('dblclick', () => {
-      if (!state.ffmpegAvailable || !state.sourcePath) return;
+      if (!state.sourcePath) return;
       if (state.converting) { showToast('正在转换中，请先中断或等待完成', 'warn'); return; }
       window.api.openVideoDialog(false).then((paths) => {
         if (paths && paths.length) loadVideo(paths[0]);
@@ -280,7 +218,6 @@
     // ---- 移动端"更换视频"按钮 ----
     if (dom.btnChangeVideo) {
       dom.btnChangeVideo.addEventListener('click', () => {
-        if (!state.ffmpegAvailable) return;
         if (state.converting) { showToast('正在转换中，请先中断或等待完成', 'warn'); return; }
         window.api.openVideoDialog(false).then((paths) => {
           if (paths && paths.length) loadVideo(paths[0]);
@@ -396,7 +333,6 @@
       dom.progressFill.style.width = pct + '%';
       dom.progressPct.textContent = pct + '%';
     });
-    window.api.onLog((l) => appendLog(l.stream, l.line));
     window.api.onDone((d) => onConversionDone(d));
     window.api.onError((e) => onConversionError(e));
 
@@ -407,7 +343,6 @@
 
   // ============ 文件导入 ============
   async function loadVideo(path) {
-    if (!state.ffmpegAvailable) return;
     if (state.converting) {
       showToast('正在转换中，请先中断或等待完成', 'warn');
       return;
@@ -456,9 +391,6 @@
       // 清除旧校准，用新视频重新采样
       Estimate.clearContentCalibration();
       recompute();
-
-      // 3. 后台采样校准：编码 0.5 秒 GIF 测得真实体积 + 耗时，替换硬编码系数
-      runContentCalibration();
     } catch (e) {
       // 探测失败：文件损坏或格式不支持（非转换上下文，直接弹模态）
       appendLog('stderr', '探测失败：' + (e.message || e));
@@ -612,7 +544,7 @@
     }
     state.fps = parseInt(dom.fpsRange.value, 10) || 12;
     state.loop = dom.loopCustom.checked ? (parseInt(dom.loopCount.value, 10) || 0) : 0;
-    state.palette = dom.paletteToggle.checked;
+    state.palette = true; // Gifski 固定高质量编码，调色板开关不再参与底层实现
     state.quality = parseInt(dom.qualityRange.value, 10) || 85;
     state.limit20 = dom.limitToggle.checked;
     const sRadio = document.querySelector('input[name="strategy"]:checked');
@@ -769,7 +701,6 @@
   async function onExportClick() {
     if (!state.sourcePath) { showToast('请先导入视频', 'warn'); return; }
     if (state.converting) return;
-    if (!state.ffmpegAvailable) { showToast('FFmpeg 不可用', 'error'); return; }
 
     // 开限制且策略失败 → 弹兜底对话框
     if (state.limit20 && state.effective && state.effective.failed) {
@@ -791,12 +722,15 @@
     recompute();
     const eff = state.effective;
 
-    // 导出前用当前最终参数重新校准（确保预估准确）
-    await ensureCalibrated(eff);
-
     // 弹出 SAF 让用户选保存路径
     const defaultName = stripExt(basename(state.sourcePath)) + '.gif';
-    const outputPath = await window.api.saveGifDialog(defaultName);
+    let outputPath;
+    try {
+      outputPath = await window.api.saveGifDialog(defaultName);
+    } catch (e) {
+      showToast('打开保存对话框失败：' + (e.message || e), 'error');
+      return;
+    }
     if (!outputPath) return; // 用户取消
 
     // 组装 params（height 为等比计算值或 -1）
@@ -816,58 +750,6 @@
 
     // 启动转换
     startConvertUI(params, outputPath);
-  }
-
-  // 确保校准数据与当前参数匹配，不匹配则重新校准
-  async function ensureCalibrated(eff) {
-    if (!window.api.probeEstSize || !state.sourceMeta) return;
-    const src = state.sourceMeta;
-    const outH = eff.height > 0 ? eff.height : Estimate.computeHeight(eff.width, src.width, src.height);
-    const videoDur = eff.endSec - eff.startSec;
-    if (videoDur < 1.0) return;
-
-    // 采样时长：取 2 秒或视频时长的 30%（取较小值），最少 1 秒
-    const sampleSec = Math.max(1.0, Math.min(2.0, videoDur * 0.3));
-    // 采样位置：截取区间中间（更代表平均复杂度）
-    const sampleStart = eff.startSec + (videoDur - sampleSec) / 2;
-
-    // 检查当前校准是否匹配（参数变化即重新校准）
-    const needCalib = !Estimate.hasContentCalibration() ||
-      Math.abs(eff.width - Estimate._calibWidth()) > 2 ||
-      Math.abs(outH - Estimate._calibHeight()) > 2 ||
-      Math.abs(eff.fps - Estimate._calibFps()) > 0 ||
-      eff.palette !== Estimate._calibPalette() ||
-      eff.quality !== Estimate._calibQuality();
-
-    if (!needCalib) return;
-
-    try {
-      const r = await window.api.probeEstSize({
-        inputPath: state.sourcePath,
-        startSec: sampleStart,
-        width: eff.width,
-        height: outH,
-        fps: eff.fps,
-        palette: eff.palette,
-        // 直接传质量值（1-100），原生层据此自动选择抖动/缩放算法和 max_colors
-        qualityValue: typeof eff.quality === 'number' ? eff.quality : (eff.quality === 'smaller' ? 30 : 85),
-        sampleSec: sampleSec
-      });
-      if (r && r.bytes > 0 && r.elapsedMs > 0) {
-        const bytesPerSec = r.bytes / r.sampleSec * 1.15;
-        const timePerSec = (r.elapsedMs / 1000) / r.sampleSec;
-        Estimate.setContentCalibration(
-          bytesPerSec, timePerSec,
-          eff.width, outH, eff.fps,
-          eff.palette, eff.quality
-        );
-        appendLog('info', '最终校准完成：' + (r.bytes / 1024).toFixed(1) + 'KB/' + r.sampleSec + 's，编码耗时 ' + (r.elapsedMs / 1000).toFixed(2) + 's，每秒耗时 ' + timePerSec.toFixed(2) + 's/s');
-        // 刷新预估显示
-        recompute();
-      }
-    } catch (e) {
-      appendLog('info', '最终校准失败，使用现有预估');
-    }
   }
 
   // 启动单次转换 UI + 调用
@@ -915,14 +797,6 @@
     appendLog('info', '开始转换：' + params.outputPath);
     // 保持屏幕常亮
     if (window.api.keepScreenOn) { try { await window.api.keepScreenOn(); } catch(e) {} }
-
-    // 注册降级时 jobId 更新回调（Gifski→FFmpeg 自动降级后新 jobId 需同步到 state）
-    window._updateConversionJobId = (newJobId) => {
-      if (state.converting) {
-        state.jobId = newJobId;
-        appendLog('info', '引擎降级，新任务ID：' + newJobId);
-      }
-    };
 
     try {
       const jobId = await window.api.startConversion(params);
@@ -976,10 +850,6 @@
     let title = '转换出错';
     let body = e.message || '发生未知错误。';
     switch (kind) {
-      case 'ffmpeg-missing':
-        title = 'FFmpeg 不可用';
-        body = '未找到系统 FFmpeg，请安装并配置环境变量后重启。';
-        break;
       case 'source-corrupt':
         title = '源文件损坏';
         body = '文件无法读取，可能已损坏或格式不支持。';
@@ -1008,8 +878,6 @@
     dom.btnExport.disabled = !state.sourcePath;
     dom.btnCancel.classList.add('hidden');
     document.getElementById('progressWrap').classList.add('hidden');
-    // 清理降级回调
-    window._updateConversionJobId = null;
     // 取消屏幕常亮
     if (window.api.releaseScreenOn) { try { window.api.releaseScreenOn(); } catch(e) {} }
   }

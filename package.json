@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build:web": "echo no-op",
+    "build:www": "node scripts/minify-www.mjs",
     "cap:sync": "cap sync android",
     "cap:copy": "cap copy android",
     "build:apk": "cap copy android && cd android && .\\gradlew assembleRelease"
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.2",
+    "terser": "^5.50.0",
     "webpack-cli": "^7.2.1"
   }
 }
