@@ -8,7 +8,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..', '..');
 const workspaceRoot = path.resolve(projectRoot, '..', '..');
 const wwwRoot = path.join(projectRoot, 'www');
-const assetsRoot = path.join(workspaceRoot, '06_Output', 'exports', '华为上架资料', '_raw');
 const outDir = path.join(workspaceRoot, '06_Output', 'exports', '华为上架资料', 'screenshots');
 const PORT = 8765;
 
@@ -19,23 +18,13 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.mp4': 'video/mp4',
-  '.gif': 'image/gif',
 };
 
 function resolveFile(urlPath) {
-  let root = wwwRoot;
   let relative = decodeURIComponent(urlPath);
-  if (relative.startsWith('/assets/')) {
-    root = assetsRoot;
-    relative = relative.slice('/assets/'.length);
-  }
   if (relative === '/' || relative === '') relative = '/index.html';
-  const filePath = path.normalize(path.join(root, relative));
-  if (!filePath.startsWith(path.normalize(root))) return null;
+  const filePath = path.normalize(path.join(wwwRoot, relative));
+  if (!filePath.startsWith(path.normalize(wwwRoot))) return null;
   return filePath;
 }
 
@@ -59,113 +48,44 @@ const executablePath = fs.existsSync(edgePath) ? edgePath : chromePath;
 const browser = await puppeteer.launch({
   executablePath,
   headless: 'new',
-  args: [
-    '--disable-gpu',
-    '--no-sandbox',
-    '--allow-file-access-from-files',
-    '--disable-web-security',
-    '--autoplay-policy=no-user-gesture-required',
-    `--window-size=1080,1920`,
-  ],
+  args: ['--disable-gpu', '--no-sandbox', '--window-size=360,640'],
 });
 
 const page = await browser.newPage();
-await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
+// 手机逻辑分辨率 360x640，3x 缩放出片 = 1080x1920（华为推荐竖屏截图尺寸）
+await page.setViewport({ width: 360, height: 640, deviceScaleFactor: 3 });
 
-async function shot(name, delay = 500) {
+async function shot(name, delay = 400) {
   await new Promise((r) => setTimeout(r, delay));
   await page.screenshot({ path: path.join(outDir, name) });
   console.log('saved', name);
 }
 
-// 1. 首页
+// 1. 首页默认
 await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'networkidle0' });
 await shot('01-首页.png');
 
-// 2. 隐私政策
-await page.goto(`http://127.0.0.1:${PORT}/privacy.html`, { waitUntil: 'networkidle0' });
-await shot('02-隐私政策.png');
-
-// 3. MP4 转 GIF（注入浏览器预览用的 API 模拟，不进入应用包）
+// 2. MP4转GIF 默认（进入页面即选择视频的空状态）
 await page.evaluateOnNewDocument(() => {
   window.api = {
     gifskiCheck: async () => ({ available: true, version: 'Gifski 1.4.4' }),
     benchmark: async () => 1.2,
-    openVideoDialog: async () => ['http://127.0.0.1:8765/assets/sample.mp4'],
-    probeVideo: async () => ({ width: 640, height: 360, duration: 10, fps: 24, sizeBytes: 788493 }),
-    saveGifDialog: async () => '',
-    startConversion: async () => 1,
-    cancelConversion: async () => true,
-    keepScreenOn: async () => {},
-    releaseScreenOn: async () => {},
     onProgress: () => {},
     onLog: () => {},
     onDone: () => {},
     onError: () => {},
   };
-  const origDesc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
-  Object.defineProperty(HTMLMediaElement.prototype, 'src', {
-    configurable: true,
-    get() {
-      return origDesc.get.call(this);
-    },
-    set(v) {
-      let value = String(v);
-      if (value.startsWith('file:///http:')) value = value.slice('file:///'.length);
-      origDesc.set.call(this, value);
-    },
-  });
 });
 await page.goto(`http://127.0.0.1:${PORT}/converter.html`, { waitUntil: 'networkidle0' });
-await page.waitForSelector('#btnSelectFile:not([disabled])', { timeout: 8000 });
-await page.click('#btnSelectFile');
-await page.waitForFunction(() => {
-  const info = document.getElementById('fileInfo');
-  return info && info.style.display !== 'none';
-}, { timeout: 12000 });
-await shot('03-MP4转GIF-导入视频.png', 1200);
+await shot('02-MP4转GIF-默认.png');
 
-// 4. 表情包工坊：导入素材
-await page.goto(`http://127.0.0.1:${PORT}/meme.html?gif=http://127.0.0.1:${PORT}/assets/meme-base.jpg`, {
-  waitUntil: 'networkidle0',
-});
-await page.waitForFunction(() => {
-  const wrap = document.getElementById('canvasWrap');
-  return wrap && !wrap.classList.contains('hidden');
-}, { timeout: 12000 });
-await shot('04-表情包工坊-导入素材.png', 1200);
+// 3. 表情包工坊默认（导入素材的空状态）
+await page.goto(`http://127.0.0.1:${PORT}/meme.html`, { waitUntil: 'networkidle0' });
+await shot('03-表情包工坊-默认.png');
 
-// 5. 表情包工坊：文字编辑
-await page.evaluate(() => {
-  document.querySelector('.meme-sidebar-btn[data-tool="text"]').click();
-});
-await page.waitForFunction(() => {
-  const el = document.getElementById('textFullscreen');
-  return el && !el.classList.contains('hidden') && el.style.display !== 'none';
-}, { timeout: 8000 });
-await page.evaluate(() => {
-  const input = document.getElementById('textFsInput');
-  input.value = '哈哈哈哈';
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  const range = document.getElementById('textFsSizeRange');
-  range.value = 48;
-  range.dispatchEvent(new Event('input', { bubbles: true }));
-});
-await shot('05-表情包工坊-文字编辑.png', 800);
-
-// 6. 表情包工坊：贴纸效果
-await page.evaluate(() => {
-  document.querySelector('#textFsDone').click();
-});
-await new Promise((r) => setTimeout(r, 300));
-await page.evaluate(() => {
-  document.querySelector('.meme-sidebar-btn[data-tool="sticker"]').click();
-});
-await page.waitForSelector('.sticker-item', { timeout: 8000 });
-await page.evaluate(() => {
-  document.querySelector('.sticker-item').click();
-});
-await shot('06-表情包工坊-贴纸效果.png', 1000);
+// 4. 隐私政策
+await page.goto(`http://127.0.0.1:${PORT}/privacy.html`, { waitUntil: 'networkidle0' });
+await shot('04-隐私政策.png');
 
 await browser.close();
 server.close();
