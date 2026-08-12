@@ -822,7 +822,7 @@
     const encodedPath = encodeURIComponent(outputPath);
     showModal({
       title: '导出完成',
-      body: 'GIF 已成功导出。<br>可以去表情包工坊继续加工，加文字、贴纸等。',
+      body: 'GIF 已成功导出。<br>可以去表情包工坊继续加工，加文字、滤镜等。',
       actions: [
         {
           label: '去工坊加工',

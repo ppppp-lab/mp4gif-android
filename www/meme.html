@@ -33,9 +33,6 @@
         <button class="meme-sidebar-btn active" data-tool="text" title="文字">
           <span class="meme-tab-icon meme-tab-text-icon">字</span>
         </button>
-        <button class="meme-sidebar-btn" data-tool="sticker" title="贴纸">
-          <span class="meme-tab-icon meme-tab-sticker-icon">贴</span>
-        </button>
         <button class="meme-sidebar-btn" data-tool="filter" title="滤镜">
           <span class="meme-tab-icon meme-tab-filter-icon">◐</span>
         </button>
@@ -70,7 +67,7 @@
         <div class="meme-empty" id="memeEmpty">
           <div class="meme-empty-icon">🎭</div>
           <div class="meme-empty-title">制作你的专属表情包</div>
-          <div class="meme-empty-sub">导入 GIF 或图片，加文字、贴纸、滤镜，一键生成表情包</div>
+          <div class="meme-empty-sub">导入 GIF 或图片，加文字、滤镜、涂鸦，一键生成表情包</div>
           <div class="meme-empty-actions">
             <button class="btn btn-accent" id="btnImportGif">导入素材</button>
           </div>
@@ -115,20 +112,6 @@
         </div>
         <div class="tpl-hint" id="tplHint">选择模板快速布局文字</div>
       </div>
-
-
-
-      <!-- 贴纸工具 -->
-      <div class="panel-section" data-panel="sticker">
-        <div class="sticker-cats">
-          <button class="sticker-cat active" data-cat="arrow">箭头</button>
-          <button class="sticker-cat" data-cat="face">表情</button>
-          <button class="sticker-cat" data-cat="dialog">对话框</button>
-          <button class="sticker-cat" data-cat="deco">装饰</button>
-        </div>
-        <div class="sticker-grid" id="stickerGrid"></div>
-      </div>
-
       <!-- 滤镜工具 -->
       <div class="panel-section" data-panel="filter">
         <div class="style-group">

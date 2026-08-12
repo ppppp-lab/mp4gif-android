@@ -2,7 +2,7 @@
    meme.js — 表情包工坊（专业版 + 增强功能）
    ============================================================
    架构：
-   - layers[] 统一管理文字层和贴纸层（有序，后添加的在上方）
+   - layers[] 统一管理文字层和涂鸦图层（有序，后添加的在上方）
    - drawPaths[] 管理画笔涂鸦路径
    - filter {preset, brightness, contrast, saturate}
    - history[] + historyIndex 实现撤销/重做
@@ -21,16 +21,8 @@
   'use strict';
 
   // ============================================================
-  // 模块：贴纸库 & 字体映射 & 滤镜预设
+  // 模块：字体映射 & 滤镜预设
   // ============================================================
-
-  // ========== 贴纸库（分类） ==========
-  const STICKERS = {
-    arrow: ['➡', '⬅', '⬆', '⬇', '↗', '↘', '↙', '↖', '👉', '👈', '☝', '👇', '🤔', '💪', '👍', '👎', '👌', '✋'],
-    face: ['😱', '😂', '🤣', '😭', '😡', '🤔', '😏', '🙄', '😴', '🤯', '😎', '🥳', '😱', '😰', '😑', '🤡', '👻', '💀'],
-    dialog: ['❓', '❗', '💢', '💦', '💭', '💬', '📢', '✨', '⭐', '🌟', '💥', '🔥', '❤', '💔', '💯', '🚫', '✅', '❌'],
-    deco: ['🎉', '🎊', '🎈', '🎁', '🌈', '☀', '🌙', '⚡', '❄', '🌸', '🍀', '💎', '👑', '🏆', '🎵', '🎮', '📷', '🍕'],
-  };
 
   // ========== 字体映射 ==========
   const FONT_MAP = {
@@ -102,7 +94,7 @@
     sourceName: '',
     canvasWidth: 0,
     canvasHeight: 0,
-    layers: [],           // [{type:'text'|'sticker', id, ...}]
+    layers: [],           // [{type:'text'|'draw', id, ...}]
     drawPaths: [],        // [{type:'pen'|'mosaic'|'eraser'|'blur', shape, color, width, points, size}]
     filter: { preset: 'none', brightness: FILTER_DEFAULT, contrast: FILTER_DEFAULT, saturate: FILTER_DEFAULT },
     border: { style: 'none', width: 8 },
@@ -169,8 +161,6 @@
     memePanelClose: $('memePanelClose'),
     // 模板
     tplHint: $('tplHint'),
-    // 贴纸
-    stickerGrid: $('stickerGrid'),
     // 滤镜
     brightnessRange: $('brightnessRange'), brightnessVal: $('brightnessVal'),
     contrastRange: $('contrastRange'), contrastVal: $('contrastVal'),
@@ -1023,8 +1013,6 @@
     syncAdvancedSliders(); renderAdvancedFs(); renderAdvLayerStrip(); renderAdvancedTimeline();
   }
 
-  let currentStickerCat = 'arrow';
-
   // ============================================================
   // 模块：事件绑定与初始化
   // ============================================================
@@ -1032,7 +1020,6 @@
   function init() {
     bindEvents();
     bindAdvancedFsEvents();
-    buildStickerGrid('arrow');
     updateDrawUI();
     renderPresetList();
     const params = new URLSearchParams(location.search);
@@ -1080,7 +1067,7 @@
 
     // ========== 侧边栏图标点击 ==========
     const TOOL_NAMES = {
-      template: '模板', text: '文字', sticker: '贴纸', filter: '滤镜',
+      template: '模板', text: '文字', filter: '滤镜',
       draw: '画笔', crop: '裁剪', platform: '平台'
     };
     let currentTool = 'text';
@@ -1340,16 +1327,6 @@
         document.querySelectorAll('.tpl-item').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         applyTemplate(item.dataset.tpl);
-      };
-    });
-
-    // 贴纸分类
-    document.querySelectorAll('.sticker-cat').forEach(cat => {
-      cat.onclick = () => {
-        document.querySelectorAll('.sticker-cat').forEach(c => c.classList.remove('active'));
-        cat.classList.add('active');
-        currentStickerCat = cat.dataset.cat;
-        buildStickerGrid(currentStickerCat);
       };
     });
 
@@ -2153,7 +2130,7 @@
     }
   }
 
-  // 把当前所有叠加内容（边框/涂鸦/文字/贴纸/高级图层）画到指定上下文，用于导出或预览
+  // 把当前所有叠加内容（边框/涂鸦/文字/高级图层）画到指定上下文，用于导出或预览
   function renderOverlaysToCtx(targetCtx, w, h, time) {
     drawBorder(w, h, targetCtx);
     ensureDrawCanvas(w, h);
@@ -2458,11 +2435,6 @@
         ctx.fillStyle = l.color;
         ctx.fillText(line, 0, y);
       });
-    } else if (l.type === 'sticker') {
-      ctx.font = l.size + 'px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(l.emoji, 0, 0);
     } else if (l.type === 'draw' && l.image) {
       ctx.drawImage(l.image, -l.width / 2, -l.height / 2, l.width, l.height);
     }
@@ -2579,13 +2551,10 @@
     const duration = adv.videoDuration || 3;
     state.layers.forEach(l => {
       if (adv.layers.length >= ADV_LAYER_LIMIT) return;
-      if (l.type === 'text' || l.type === 'sticker') {
-        let cw, ch;
-        if (l.type === 'text') {
-          const lines = l.text.split('\n');
-          cw = Math.max(...lines.map(line => line.length)) * l.size * 1.2 + l.stroke * 4 + 20;
-          ch = lines.length * l.size * 1.2 + l.stroke * 4 + 20;
-        } else { cw = l.size * 1.5; ch = l.size * 1.5; }
+      if (l.type === 'text') {
+        const lines = l.text.split('\n');
+        let cw = Math.max(...lines.map(line => line.length)) * l.size * 1.2 + l.stroke * 4 + 20;
+        let ch = lines.length * l.size * 1.2 + l.stroke * 4 + 20;
         cw = Math.ceil(cw); ch = Math.ceil(ch);
         const tc = document.createElement('canvas');
         tc.width = cw; tc.height = ch;
@@ -2596,7 +2565,7 @@
         drawLayerToCtx(l, tctx);
         l.x = origX; l.y = origY;
         const img = new Image();
-        const layerData = { name: l.type === 'text' ? '文字: ' + l.text.substring(0, 10) : '贴纸: ' + l.emoji, origX, origY, rotation: l.rotation || 0 };
+        const layerData = { name: '文字: ' + l.text.substring(0, 10), origX, origY, rotation: l.rotation || 0 };
         img.onload = () => {
           const id = 'adv_import_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
           const layer = { id, image: img, name: layerData.name, startTime: 0, endTime: duration, visible: true, keyframes: { pos: [{ t: 0, x: layerData.origX, y: layerData.origY }], scale: [{ t: 0, s: 1 }], rot: [{ t: 0, r: layerData.rotation * 180 / Math.PI }], opacity: [{ t: 0, o: 1 }] } };
@@ -3420,44 +3389,20 @@
     // 文字列表已移至全屏编辑，此处保留为空函数以兼容
   }
 
-  // ========== 贴纸 ==========
-  function buildStickerGrid(cat) {
-    dom.stickerGrid.innerHTML = '';
-    (STICKERS[cat] || []).forEach(emoji => {
-      const item = document.createElement('div');
-      item.className = 'sticker-item';
-      item.textContent = emoji;
-      item.onclick = () => addSticker(emoji);
-      dom.stickerGrid.appendChild(item);
-    });
-  }
-
-  function addSticker(emoji) {
-    const s = {
-      type: 'sticker', id: state.nextId++,
-      emoji, x: state.canvasWidth / 2, y: state.canvasHeight / 2,
-      size: 48, rotation: 0, flipped: false,
-    };
-    state.layers.push(s);
-    state.selectedId = s.id;
-    renderLayerList(); render();
-    pushHistory();
-  }
-
   // ========== 图层管理 ==========
   function renderLayerList() {
     if (!dom.layerList) return;
     dom.layerList.innerHTML = '';
     if (state.layers.length === 0) {
-      dom.layerList.innerHTML = '<div class="layer-empty">暂无图层，添加文字或贴纸后会显示在这里</div>';
+      dom.layerList.innerHTML = '<div class="layer-empty">暂无图层，添加文字或涂鸦后会显示在这里</div>';
       return;
     }
     [...state.layers].reverse().forEach((l, idx) => {
       const realIdx = state.layers.length - 1 - idx;
       const item = document.createElement('div');
       item.className = 'layer-item' + (l.id === state.selectedId ? ' active' : '');
-      const icon = l.type === 'text' ? '字' : l.type === 'draw' ? '✎' : l.emoji;
-      const name = l.type === 'text' ? (l.text.replace(/\n/g, ' ').slice(0, 15) || '空文字') : l.type === 'draw' ? '涂鸦' : ('贴纸 ' + l.emoji);
+      const icon = l.type === 'text' ? '字' : l.type === 'draw' ? '✎' : '层';
+      const name = l.type === 'text' ? (l.text.replace(/\n/g, ' ').slice(0, 15) || '空文字') : l.type === 'draw' ? '涂鸦' : '图层';
       item.innerHTML = `
         <div class="layer-icon">${escapeHtml(icon)}</div>
         <span class="layer-name">${escapeHtml(name)}</span>
@@ -4504,7 +4449,7 @@
           drawGifFrameToCanvas(accCtx, state.gifFrames[j], prevJ, gw, gh);
         }
 
-        // 合成完整画面：底帧 + 滤镜 + 边框 + 涂鸦 + 文字/贴纸/高级图层
+        // 合成完整画面：底帧 + 滤镜 + 边框 + 涂鸦 + 文字/高级图层
         composeCtx.clearRect(0, 0, gw, gh);
         const f2 = state.filter;
         let filterStr = FILTER_PRESETS[f2.preset] || '';
@@ -4840,11 +4785,6 @@
         c.fillStyle = l.color;
         c.fillText(line, 0, y);
       });
-    } else if (l.type === 'sticker') {
-      c.font = l.size + 'px sans-serif';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText(l.emoji, 0, 0);
     } else if (l.type === 'draw' && l.image) {
       c.drawImage(l.image, -l.width / 2, -l.height / 2, l.width, l.height);
     }

@@ -358,7 +358,6 @@
 /* 各图标字体样式 */
 .meme-tab-tpl-icon { font-family: var(--meme-font-impact); font-size: 13px; }
 .meme-tab-text-icon { font-family: var(--meme-font-heavy); font-size: 11px; }
-.meme-tab-sticker-icon { font-family: var(--meme-font-heavy); font-size: 13px; }
 .meme-tab-filter-icon { font-size: 13px; }
 .meme-tab-draw-icon { font-size: 13px; }
 .meme-tab-layer-icon { font-size: 13px; }
@@ -617,7 +616,7 @@
 }
 
 /* chips 通用 */
-.font-chips, .color-chips, .border-chips, .crop-chips, .filter-presets, .sticker-cats {
+.font-chips, .color-chips, .border-chips, .crop-chips, .filter-presets {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
@@ -787,54 +786,6 @@
 }
 .meme-panel-body .toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
 .meme-panel-body .toggle input:checked + .toggle-track::after { transform: translateX(16px); background: #fff; }
-
-/* ---------- 贴纸：6 列 ---------- */
-.sticker-cats {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 2px;
-}
-
-.sticker-cat {
-  padding: 4px 9px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 11px;
-  color: var(--dim);
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.sticker-cat.active {
-  background: var(--accent);
-  color: var(--text);
-  border-color: var(--accent);
-}
-
-.sticker-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 5px;
-  max-height: 120px;
-  overflow-y: auto;
-}
-
-.sticker-item {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 20px;
-  color: var(--text);
-}
-.sticker-item:active {
-  background: var(--accent);
-  transform: scale(0.93);
-}
 
 /* ---------- 图层列表：紧凑 ---------- */
 .layer-list {
