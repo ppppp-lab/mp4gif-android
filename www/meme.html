@@ -1,1 +1,482 @@
-<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#0C0E12"><title>表情包工坊</title><link rel="stylesheet" href="styles.css?v=20260731b"><link rel="stylesheet" href="meme.css"></head><body><div class="app meme-app"><header class="topbar meme-topbar"><button class="meme-back" id="btnBack">←</button> <span class="meme-title">表情包工坊</span><div class="meme-top-actions"><button class="meme-icon-btn" id="btnUndo" title="撤销" disabled="disabled">↶</button> <button class="meme-icon-btn" id="btnRedo" title="重做" disabled="disabled">↷</button> <button class="meme-icon-btn" id="btnShare" title="分享" disabled="disabled">↗</button> <button class="btn btn-accent btn-export-meme" id="btnExportMeme" disabled="disabled">导出</button></div></header><div class="meme-body"><aside class="meme-sidebar hidden" id="memeSidebar"><div class="meme-sidebar-tools"><button class="meme-sidebar-btn active" data-tool="text" title="文字"><span class="meme-tab-icon meme-tab-text-icon">字</span></button> <button class="meme-sidebar-btn" data-tool="filter" title="滤镜"><span class="meme-tab-icon meme-tab-filter-icon">◐</span></button> <button class="meme-sidebar-btn" data-tool="draw" title="画笔"><span class="meme-tab-icon meme-tab-draw-icon">✎</span></button> <button class="meme-sidebar-btn" data-tool="crop" title="裁剪"><span class="meme-tab-icon meme-tab-crop-icon">⬚</span></button> <button class="meme-sidebar-btn" data-tool="platform" title="平台"><span class="meme-tab-icon meme-tab-platform-icon">⌘</span></button> <button class="meme-sidebar-btn" data-tool="advanced" title="高级"><span class="meme-tab-icon meme-tab-advanced-icon">⧉</span></button></div><div class="meme-sidebar-bottom"><div class="meme-source-mini hidden" id="memeSourceMini"><button class="meme-sidebar-mini-btn" id="btnChangeSourceMini" title="换素材">↻</button></div></div></aside><main class="meme-content"><div class="meme-stage" id="memeStage"><div class="meme-empty" id="memeEmpty"><div class="meme-empty-icon">🎭</div><div class="meme-empty-title">制作你的专属表情包</div><div class="meme-empty-sub">导入 GIF 或图片，加文字、贴纸、滤镜，一键生成表情包</div><div class="meme-empty-actions"><button class="btn btn-accent" id="btnImportGif">导入素材</button></div></div><div class="meme-canvas-wrap hidden" id="canvasWrap"><canvas id="memeCanvas"></canvas></div></div><div class="meme-source hidden" id="memeSource"><span class="meme-source-label">素材</span> <span class="meme-source-name" id="sourceName">—</span> <button class="chip chip-action" id="btnChangeSource">换</button></div></main></div><div class="meme-panel-overlay" id="memePanelOverlay"></div><div class="meme-panel" id="memePanel"><div class="meme-panel-header"><div class="meme-panel-drag-bar"></div><span class="meme-panel-title" id="memePanelTitle">模板</span> <button class="meme-panel-close" id="memePanelClose">×</button></div><div class="meme-panel-body"><div class="panel-section" data-panel="template"><div class="tpl-grid"><button class="tpl-item active" data-tpl="blank">空白</button> <button class="tpl-item" data-tpl="classic">经典顶底</button> <button class="tpl-item" data-tpl="top">顶部文字</button> <button class="tpl-item" data-tpl="bottom">底部文字</button> <button class="tpl-item" data-tpl="white-box">白底框</button> <button class="tpl-item" data-tpl="black-bar">黑条幅</button></div><div class="tpl-hint" id="tplHint">选择模板快速布局文字</div></div><div class="panel-section" data-panel="sticker"><div class="sticker-cats"><button class="sticker-cat active" data-cat="arrow">箭头</button> <button class="sticker-cat" data-cat="face">表情</button> <button class="sticker-cat" data-cat="dialog">对话框</button> <button class="sticker-cat" data-cat="deco">装饰</button></div><div class="sticker-grid" id="stickerGrid"></div></div><div class="panel-section" data-panel="filter"><div class="style-group"><label class="style-label">预设</label><div class="filter-presets"><button class="filter-preset active" data-preset="none">原图</button> <button class="filter-preset" data-preset="gray">黑白</button> <button class="filter-preset" data-preset="sepia">复古</button> <button class="filter-preset" data-preset="cold">冷色</button> <button class="filter-preset" data-preset="warm">暖色</button> <button class="filter-preset" data-preset="invert">反色</button></div></div><div class="style-group"><label class="style-label">亮度 <strong id="brightnessVal">100</strong>%</label> <input class="range" type="range" id="brightnessRange" min="0" max="200" step="5" value="100"></div><div class="style-group"><label class="style-label">对比度 <strong id="contrastVal">100</strong>%</label> <input class="range" type="range" id="contrastRange" min="0" max="200" step="5" value="100"></div><div class="style-group"><label class="style-label">饱和度 <strong id="saturateVal">100</strong>%</label> <input class="range" type="range" id="saturateRange" min="0" max="200" step="5" value="100"></div></div><div class="panel-section" data-panel="crop"><div class="style-group"><label class="style-label">比例</label><div class="crop-chips"><button class="crop-chip active" data-crop="free">自由</button> <button class="crop-chip" data-crop="square">1:1 方形</button> <button class="crop-chip" data-crop="wide">4:3 宽屏</button> <button class="crop-chip" data-crop="portrait">3:4 竖屏</button></div></div><div class="style-group"><button class="btn btn-accent" id="btnApplyCrop">应用裁剪</button> <button class="btn btn-xs btn-ghost" id="btnResetCrop" style="margin-left:8px">重置</button></div></div><div class="panel-section" data-panel="platform"><div class="style-group"><label class="style-label">平台预设</label><div class="platform-chips"><button class="platform-chip" data-platform="wechat">微信 300×300 1MB</button> <button class="platform-chip" data-platform="qq">QQ 240×240 500KB</button> <button class="platform-chip" data-platform="xiaohongshu">小红书 360×360 2MB</button> <button class="platform-chip" data-platform="douyin">抖音 360×360 1MB</button></div></div><div class="style-group"><label class="style-label">快捷工具</label><div class="platform-quick-btns"><button class="btn btn-xs btn-ghost" id="btnAddWhiteBorder">⬜ 加白边</button> <button class="btn btn-xs btn-ghost" id="btnAddRoundCorner">⬭ 圆角</button></div></div></div></div></div><div class="text-fullscreen hidden" id="textFullscreen"><header class="fs-topbar"><button class="fs-back" id="textFsBack">←</button> <span class="fs-title">编辑文字</span> <button class="fs-done" id="textFsDone">✓</button></header><div class="fs-canvas-area"><canvas id="textFsCanvas"></canvas></div><div class="fs-bottom"><div class="fs-bottom-scroll"><div class="fs-text-list-row"><div class="fs-text-list" id="textFsList"></div><button class="btn btn-accent btn-xs" id="textFsAdd">＋ 添加</button></div><textarea id="textFsInput" placeholder="输入文字" rows="2"></textarea><div class="style-group"><label class="style-label">字体</label><div class="font-chips" id="textFsFontChips"><button class="font-chip active" data-font="heavy">粗黑</button> <button class="font-chip" data-font="impact">Impact</button> <button class="font-chip" data-font="song">宋体</button> <button class="font-chip" data-font="kai">楷书</button> <button class="font-chip" data-font="mono">等宽</button></div></div><div class="style-group"><label class="style-label">颜色</label><div class="color-chips" id="textFsColorChips"><button class="color-chip active" data-color="#FFFFFF" style="background:#fff"></button> <button class="color-chip" data-color="#000000" style="background:#000"></button> <button class="color-chip" data-color="#FF4747" style="background:#ff4747"></button> <button class="color-chip" data-color="#FFD93D" style="background:#ffd93d"></button> <button class="color-chip" data-color="#3DDC84" style="background:#3ddc84"></button> <button class="color-chip" data-color="#00C2FF" style="background:#00c2ff"></button> <button class="color-chip color-chip-add" id="btnTextFsAddColor" title="自定义颜色">+</button></div><input type="color" id="textFsColorPicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" value="#FFFFFF"></div><div class="style-row-2col"><div class="style-group"><label class="style-label">大小 <strong id="textFsSizeVal">32</strong></label> <input class="range" type="range" id="textFsSizeRange" min="12" max="80" step="2" value="32"></div><div class="style-group"><label class="style-label">描边 <strong id="textFsStrokeVal">3</strong></label> <input class="range" type="range" id="textFsStrokeRange" min="0" max="8" step="1" value="3"></div></div><div class="style-row-2col"><div class="style-group"><label class="style-label">旋转 <strong id="textFsRotateVal">0°</strong></label> <input class="range" type="range" id="textFsRotateRange" min="-180" max="180" step="5" value="0"></div><div class="style-group"><label class="style-label">阴影</label> <label class="toggle"><input type="checkbox" id="textFsShadowToggle"><span class="toggle-track"></span></label></div></div><div class="text-actions"><button class="btn btn-xs btn-ghost" id="textFsDelete">删除</button></div></div></div></div><div class="draw-fullscreen hidden" id="drawFullscreen"><header class="fs-topbar"><button class="fs-back" id="drawFsBack">←</button> <span class="fs-title">画笔</span> <button class="fs-done" id="drawFsDone">✓</button></header><div class="fs-canvas-area"><canvas id="drawFsCanvas"></canvas></div><div class="fs-bottom"><div class="fs-bottom-scroll"><div class="style-group"><label class="style-label">模式</label><div class="draw-mode-chips" id="drawFsModeChips"><button class="draw-mode-chip active" data-mode="pen">画笔</button> <button class="draw-mode-chip" data-mode="eraser">橡皮擦</button> <button class="draw-mode-chip" data-mode="blur">模糊</button> <button class="draw-mode-chip" data-mode="mosaic">马赛克</button></div></div><div class="style-group" id="drawFsShapeGroup"><label class="style-label">形状</label><div class="draw-shape-chips" id="drawFsShapeChips"><button class="draw-shape-chip active" data-shape="free" title="自由">✎</button> <button class="draw-shape-chip" data-shape="line" title="直线">╱</button> <button class="draw-shape-chip" data-shape="arrow" title="箭头">↗</button> <button class="draw-shape-chip" data-shape="rect" title="矩形">▭</button> <button class="draw-shape-chip" data-shape="ellipse" title="椭圆">○</button></div></div><div class="style-group" id="drawFsColorGroup"><label class="style-label">颜色</label><div class="color-chips" id="drawFsColorChips"><button class="color-chip draw-fs-color active" data-color="#FF4747" style="background:#ff4747"></button> <button class="color-chip draw-fs-color" data-color="#FFD93D" style="background:#ffd93d"></button> <button class="color-chip draw-fs-color" data-color="#3DDC84" style="background:#3ddc84"></button> <button class="color-chip draw-fs-color" data-color="#00C2FF" style="background:#00c2ff"></button> <button class="color-chip draw-fs-color" data-color="#FFFFFF" style="background:#fff"></button> <button class="color-chip draw-fs-color" data-color="#000000" style="background:#000"></button> <button class="color-chip color-chip-add" id="btnDrawFsAddColor" title="自定义颜色">+</button></div><input type="color" id="drawFsColorPicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" value="#FF4747"></div><div class="style-group" id="drawFsBrushGroup"><label class="style-label">粗细 <strong id="drawFsBrushVal">4</strong>px</label> <input class="range" type="range" id="drawFsBrushRange" min="1" max="20" step="1" value="4"></div><div class="style-group hidden" id="drawFsMosaicGroup"><label class="style-label">马赛克块 <strong id="drawFsMosaicVal">10</strong>px</label> <input class="range" type="range" id="drawFsMosaicRange" min="4" max="30" step="2" value="10"></div><div class="text-actions"><button class="btn btn-xs btn-ghost" id="drawFsClear">清除涂鸦</button></div></div></div></div><div class="crop-fullscreen hidden" id="cropFullscreen"><header class="fs-topbar"><button class="fs-back" id="cropFsBack">←</button> <span class="fs-title">裁剪</span> <button class="fs-done" id="cropFsDone">✓</button></header><div class="fs-canvas-area"><canvas id="cropFsCanvas"></canvas></div><div class="fs-bottom"><div class="fs-bottom-scroll"><div class="style-group"><label class="style-label">比例</label><div class="crop-chips" id="cropFsChips"><button class="crop-chip active" data-crop="free">自由</button> <button class="crop-chip" data-crop="square">1:1</button> <button class="crop-chip" data-crop="wide">4:3</button> <button class="crop-chip" data-crop="portrait">3:4</button></div></div><div class="style-group"><button class="btn btn-xs btn-ghost" id="cropFsReset">重置选区</button></div></div></div></div><div class="advanced-fullscreen hidden" id="advancedFullscreen"><header class="adv-topbar"><button class="adv-back" id="advFsBack">←</button><div class="adv-mode-tabs" id="advModeTabs"><button class="adv-mode-tab active" data-mode="keyframe" id="advModeKeyframe" title="手动关键帧"><span class="adv-mode-icon">◆</span><span class="adv-mode-text">关键帧</span></button> <button class="adv-mode-tab" data-mode="track" id="advModeTrack" title="自动追踪"><span class="adv-mode-icon">⊕</span><span class="adv-mode-text">追踪</span></button></div><div class="adv-topbar-actions"><button class="adv-icon-btn" id="advFsUndo" title="撤销">↶</button> <button class="adv-action-btn" id="advFsAddImage" title="添加图片图层">＋ 图片</button></div></header><div class="adv-track-hint hidden" id="advTrackHint"><span class="adv-track-hint-text" id="advTrackHintText">将图片放到目标位置，点击开始追踪</span><div class="adv-track-hint-controls"><label class="adv-track-precision-label">追踪密度 <input type="number" id="advTrackPrecision" class="adv-track-precision-input" min="1" max="10" value="1" step="1"> <span class="adv-track-precision-unit">帧/次</span></label> <label class="adv-track-relative-label"><input type="checkbox" id="advTrackRelativeMode"> <span class="adv-track-relative-text">相对位置</span></label> <button class="adv-track-hint-btn" id="advTrackStartBtn">开始追踪</button></div></div><div class="adv-canvas-area"><canvas id="advFsCanvas"></canvas><div class="adv-track-anchor hidden" id="advTrackAnchor"></div><div class="adv-empty" id="advFsEmpty"><div class="adv-empty-icon">⧉</div><div class="adv-empty-text">添加图片图层开始动画制作</div><button class="btn btn-accent btn-xs" id="advFsEmptyAdd">＋ 添加图片</button></div></div><div class="adv-layer-strip" id="advLayerStrip"></div><div class="adv-controls"><div class="adv-ctrl-row"><div class="adv-ctrl-cell"><span class="adv-ctrl-label">X</span> <input type="range" class="adv-range" id="advFsPosXRange" min="0" max="480" value="240"> <span class="adv-ctrl-val" id="advFsPosXVal">240</span></div><div class="adv-ctrl-cell"><span class="adv-ctrl-label">Y</span> <input type="range" class="adv-range" id="advFsPosYRange" min="0" max="480" value="240"> <span class="adv-ctrl-val" id="advFsPosYVal">240</span></div><button class="adv-kf-btn" id="advFsPosKfBtn" title="位置关键帧">◆</button></div><div class="adv-ctrl-row"><div class="adv-ctrl-cell"><span class="adv-ctrl-label">缩放</span> <input type="range" class="adv-range" id="advFsScaleRange" min="10" max="500" value="100"> <span class="adv-ctrl-val" id="advFsScaleVal">100%</span></div><div class="adv-ctrl-cell"><span class="adv-ctrl-label">旋转</span> <input type="range" class="adv-range" id="advFsRotateRange" min="-180" max="180" value="0"> <span class="adv-ctrl-val" id="advFsRotateVal">0°</span></div><button class="adv-kf-btn" id="advFsScaleKfBtn" title="缩放关键帧">◆</button> <button class="adv-kf-btn" id="advFsRotateKfBtn" title="旋转关键帧">◆</button></div><div class="adv-playback"><button class="adv-play-btn" id="advFsPlayBtn">▶</button> <span class="adv-timecode" id="advFsTimecode">00:00.00</span> <span class="adv-timecode-sep">/</span> <span class="adv-duration" id="advFsDuration">00:00.00</span></div></div><div class="adv-timeline"><canvas id="advFsTimelineCanvas"></canvas><div id="advPlayhead" class="adv-playhead-line"></div></div></div></div><div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalBox"><div class="modal-title" id="modalTitle">提示</div><div class="modal-body" id="modalBody"></div><div class="modal-actions" id="modalActions"></div></div></div><div class="toast-wrap" id="toastWrap"></div><script src="android-bridge.js"></script><script src="gifuct.bundle.js"></script><script src="meme.js?v=20260731h"></script></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0C0E12" />
+  <title>表情包工坊</title>
+  <link rel="stylesheet" href="styles.css?v=20260731b" />
+  <link rel="stylesheet" href="meme.css" />
+</head>
+<body>
+<div class="app meme-app">
+
+  <!-- ============ 顶栏 ============ -->
+  <header class="topbar meme-topbar">
+    <button class="meme-back" id="btnBack">←</button>
+    <!-- btnBack onclick 改为跳转 home.html -->
+    <span class="meme-title">表情包工坊</span>
+    <div class="meme-top-actions">
+      <button class="meme-icon-btn" id="btnUndo" title="撤销" disabled>↶</button>
+      <button class="meme-icon-btn" id="btnRedo" title="重做" disabled>↷</button>
+      <button class="meme-icon-btn" id="btnShare" title="分享" disabled>↗</button>
+      <button class="btn btn-accent btn-export-meme" id="btnExportMeme" disabled>导出</button>
+    </div>
+  </header>
+
+  <!-- ============ 主内容区（侧边栏+画布） ============ -->
+  <div class="meme-body">
+
+    <!-- 左侧侧边栏 -->
+    <aside class="meme-sidebar hidden" id="memeSidebar">
+      <div class="meme-sidebar-tools">
+        <button class="meme-sidebar-btn active" data-tool="text" title="文字">
+          <span class="meme-tab-icon meme-tab-text-icon">字</span>
+        </button>
+        <button class="meme-sidebar-btn" data-tool="sticker" title="贴纸">
+          <span class="meme-tab-icon meme-tab-sticker-icon">贴</span>
+        </button>
+        <button class="meme-sidebar-btn" data-tool="filter" title="滤镜">
+          <span class="meme-tab-icon meme-tab-filter-icon">◐</span>
+        </button>
+        <button class="meme-sidebar-btn" data-tool="draw" title="画笔">
+          <span class="meme-tab-icon meme-tab-draw-icon">✎</span>
+        </button>
+        <button class="meme-sidebar-btn" data-tool="crop" title="裁剪">
+          <span class="meme-tab-icon meme-tab-crop-icon">⬚</span>
+        </button>
+        <button class="meme-sidebar-btn" data-tool="platform" title="平台">
+          <span class="meme-tab-icon meme-tab-platform-icon">⌘</span>
+        </button>
+        <button class="meme-sidebar-btn" data-tool="advanced" title="高级">
+          <span class="meme-tab-icon meme-tab-advanced-icon">⧉</span>
+        </button>
+      </div>
+      <div class="meme-sidebar-bottom">
+        <!-- 素材来源条（竖排小按钮） -->
+        <div class="meme-source-mini hidden" id="memeSourceMini">
+          <button class="meme-sidebar-mini-btn" id="btnChangeSourceMini" title="换素材">↻</button>
+        </div>
+  
+      </div>
+    </aside>
+
+    <!-- 画布区域 -->
+    <main class="meme-content">
+
+      <!-- 预览画布 -->
+      <div class="meme-stage" id="memeStage">
+        <!-- 空状态 -->
+        <div class="meme-empty" id="memeEmpty">
+          <div class="meme-empty-icon">🎭</div>
+          <div class="meme-empty-title">制作你的专属表情包</div>
+          <div class="meme-empty-sub">导入 GIF 或图片，加文字、贴纸、滤镜，一键生成表情包</div>
+          <div class="meme-empty-actions">
+            <button class="btn btn-accent" id="btnImportGif">导入素材</button>
+          </div>
+        </div>
+        <!-- 画布容器 -->
+        <div class="meme-canvas-wrap hidden" id="canvasWrap">
+          <canvas id="memeCanvas"></canvas>
+
+        </div>
+      </div>
+
+      <!-- 素材来源条（保留原位置，但在侧边栏显示后隐藏） -->
+      <div class="meme-source hidden" id="memeSource">
+        <span class="meme-source-label">素材</span>
+        <span class="meme-source-name" id="sourceName">—</span>
+        <button class="chip chip-action" id="btnChangeSource">换</button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ============ 底部弹出面板 ============ -->
+  <div class="meme-panel-overlay" id="memePanelOverlay"></div>
+  <div class="meme-panel" id="memePanel">
+    <!-- 拖拽条 + 标题 + 关闭按钮 -->
+    <div class="meme-panel-header">
+      <div class="meme-panel-drag-bar"></div>
+      <span class="meme-panel-title" id="memePanelTitle">模板</span>
+      <button class="meme-panel-close" id="memePanelClose">×</button>
+    </div>
+    <div class="meme-panel-body">
+
+      <!-- 模板工具 -->
+      <div class="panel-section" data-panel="template">
+        <div class="tpl-grid">
+          <button class="tpl-item active" data-tpl="blank">空白</button>
+          <button class="tpl-item" data-tpl="classic">经典顶底</button>
+          <button class="tpl-item" data-tpl="top">顶部文字</button>
+          <button class="tpl-item" data-tpl="bottom">底部文字</button>
+          <button class="tpl-item" data-tpl="white-box">白底框</button>
+          <button class="tpl-item" data-tpl="black-bar">黑条幅</button>
+        </div>
+        <div class="tpl-hint" id="tplHint">选择模板快速布局文字</div>
+      </div>
+
+
+
+      <!-- 贴纸工具 -->
+      <div class="panel-section" data-panel="sticker">
+        <div class="sticker-cats">
+          <button class="sticker-cat active" data-cat="arrow">箭头</button>
+          <button class="sticker-cat" data-cat="face">表情</button>
+          <button class="sticker-cat" data-cat="dialog">对话框</button>
+          <button class="sticker-cat" data-cat="deco">装饰</button>
+        </div>
+        <div class="sticker-grid" id="stickerGrid"></div>
+      </div>
+
+      <!-- 滤镜工具 -->
+      <div class="panel-section" data-panel="filter">
+        <div class="style-group">
+          <label class="style-label">预设</label>
+          <div class="filter-presets">
+            <button class="filter-preset active" data-preset="none">原图</button>
+            <button class="filter-preset" data-preset="gray">黑白</button>
+            <button class="filter-preset" data-preset="sepia">复古</button>
+            <button class="filter-preset" data-preset="cold">冷色</button>
+            <button class="filter-preset" data-preset="warm">暖色</button>
+            <button class="filter-preset" data-preset="invert">反色</button>
+          </div>
+        </div>
+        <div class="style-group">
+          <label class="style-label">亮度 <strong id="brightnessVal">100</strong>%</label>
+          <input class="range" type="range" id="brightnessRange" min="0" max="200" step="5" value="100" />
+        </div>
+        <div class="style-group">
+          <label class="style-label">对比度 <strong id="contrastVal">100</strong>%</label>
+          <input class="range" type="range" id="contrastRange" min="0" max="200" step="5" value="100" />
+        </div>
+        <div class="style-group">
+          <label class="style-label">饱和度 <strong id="saturateVal">100</strong>%</label>
+          <input class="range" type="range" id="saturateRange" min="0" max="200" step="5" value="100" />
+        </div>
+      </div>
+
+
+
+      <!-- 裁剪工具 -->
+      <div class="panel-section" data-panel="crop">
+        <div class="style-group">
+          <label class="style-label">比例</label>
+          <div class="crop-chips">
+            <button class="crop-chip active" data-crop="free">自由</button>
+            <button class="crop-chip" data-crop="square">1:1 方形</button>
+            <button class="crop-chip" data-crop="wide">4:3 宽屏</button>
+            <button class="crop-chip" data-crop="portrait">3:4 竖屏</button>
+          </div>
+        </div>
+        <div class="style-group">
+          <button class="btn btn-accent" id="btnApplyCrop">应用裁剪</button>
+          <button class="btn btn-xs btn-ghost" id="btnResetCrop" style="margin-left:8px">重置</button>
+        </div>
+      </div>
+
+      <!-- 平台工具 -->
+      <div class="panel-section" data-panel="platform">
+        <div class="style-group">
+          <label class="style-label">平台预设</label>
+          <div class="platform-chips">
+            <button class="platform-chip" data-platform="wechat">微信 300×300 1MB</button>
+            <button class="platform-chip" data-platform="qq">QQ 240×240 500KB</button>
+            <button class="platform-chip" data-platform="xiaohongshu">小红书 360×360 2MB</button>
+            <button class="platform-chip" data-platform="douyin">抖音 360×360 1MB</button>
+          </div>
+        </div>
+        <div class="style-group">
+          <label class="style-label">快捷工具</label>
+          <div class="platform-quick-btns">
+            <button class="btn btn-xs btn-ghost" id="btnAddWhiteBorder">⬜ 加白边</button>
+            <button class="btn btn-xs btn-ghost" id="btnAddRoundCorner">⬭ 圆角</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.meme-panel-body -->
+  </div><!-- /.meme-panel -->
+
+  <!-- ============ 文字全屏编辑 ============ -->
+  <div class="text-fullscreen hidden" id="textFullscreen">
+    <header class="fs-topbar">
+      <button class="fs-back" id="textFsBack">←</button>
+      <span class="fs-title">编辑文字</span>
+      <button class="fs-done" id="textFsDone">✓</button>
+    </header>
+    <div class="fs-canvas-area">
+      <canvas id="textFsCanvas"></canvas>
+    </div>
+    <div class="fs-bottom">
+      <div class="fs-bottom-scroll">
+        <!-- 文字列表 + 添加按钮 -->
+        <div class="fs-text-list-row">
+          <div class="fs-text-list" id="textFsList"></div>
+          <button class="btn btn-accent btn-xs" id="textFsAdd">＋ 添加</button>
+        </div>
+        <!-- 文字内容输入 -->
+        <textarea id="textFsInput" placeholder="输入文字" rows="2"></textarea>
+        <!-- 字体 -->
+        <div class="style-group">
+          <label class="style-label">字体</label>
+          <div class="font-chips" id="textFsFontChips">
+            <button class="font-chip active" data-font="heavy">粗黑</button>
+            <button class="font-chip" data-font="impact">Impact</button>
+            <button class="font-chip" data-font="song">宋体</button>
+            <button class="font-chip" data-font="kai">楷书</button>
+            <button class="font-chip" data-font="mono">等宽</button>
+          </div>
+        </div>
+        <!-- 颜色 -->
+        <div class="style-group">
+          <label class="style-label">颜色</label>
+          <div class="color-chips" id="textFsColorChips">
+            <button class="color-chip active" data-color="#FFFFFF" style="background:#FFFFFF"></button>
+            <button class="color-chip" data-color="#000000" style="background:#000000"></button>
+            <button class="color-chip" data-color="#FF4747" style="background:#FF4747"></button>
+            <button class="color-chip" data-color="#FFD93D" style="background:#FFD93D"></button>
+            <button class="color-chip" data-color="#3DDC84" style="background:#3DDC84"></button>
+            <button class="color-chip" data-color="#00C2FF" style="background:#00C2FF"></button>
+            <button class="color-chip color-chip-add" id="btnTextFsAddColor" title="自定义颜色">+</button>
+          </div>
+          <input type="color" id="textFsColorPicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" value="#FFFFFF" />
+        </div>
+        <!-- 大小 / 描边 -->
+        <div class="style-row-2col">
+          <div class="style-group">
+            <label class="style-label">大小 <strong id="textFsSizeVal">32</strong></label>
+            <input class="range" type="range" id="textFsSizeRange" min="12" max="80" step="2" value="32" />
+          </div>
+          <div class="style-group">
+            <label class="style-label">描边 <strong id="textFsStrokeVal">3</strong></label>
+            <input class="range" type="range" id="textFsStrokeRange" min="0" max="8" step="1" value="3" />
+          </div>
+        </div>
+        <!-- 旋转 / 阴影 -->
+        <div class="style-row-2col">
+          <div class="style-group">
+            <label class="style-label">旋转 <strong id="textFsRotateVal">0°</strong></label>
+            <input class="range" type="range" id="textFsRotateRange" min="-180" max="180" step="5" value="0" />
+          </div>
+          <div class="style-group">
+            <label class="style-label">阴影</label>
+            <label class="toggle"><input type="checkbox" id="textFsShadowToggle" /><span class="toggle-track"></span></label>
+          </div>
+        </div>
+        <!-- 删除 / 复制 -->
+        <div class="text-actions">
+          <button class="btn btn-xs btn-ghost" id="textFsDelete">删除</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 画笔全屏编辑 ============ -->
+  <div class="draw-fullscreen hidden" id="drawFullscreen">
+    <header class="fs-topbar">
+      <button class="fs-back" id="drawFsBack">←</button>
+      <span class="fs-title">画笔</span>
+      <button class="fs-done" id="drawFsDone">✓</button>
+    </header>
+    <div class="fs-canvas-area">
+      <canvas id="drawFsCanvas"></canvas>
+    </div>
+    <div class="fs-bottom">
+      <div class="fs-bottom-scroll">
+        <!-- 模式 -->
+        <div class="style-group">
+          <label class="style-label">模式</label>
+          <div class="draw-mode-chips" id="drawFsModeChips">
+            <button class="draw-mode-chip active" data-mode="pen">画笔</button>
+            <button class="draw-mode-chip" data-mode="eraser">橡皮擦</button>
+            <button class="draw-mode-chip" data-mode="blur">模糊</button>
+            <button class="draw-mode-chip" data-mode="mosaic">马赛克</button>
+          </div>
+        </div>
+        <!-- 形状（仅画笔模式） -->
+        <div class="style-group" id="drawFsShapeGroup">
+          <label class="style-label">形状</label>
+          <div class="draw-shape-chips" id="drawFsShapeChips">
+            <button class="draw-shape-chip active" data-shape="free" title="自由">✎</button>
+            <button class="draw-shape-chip" data-shape="line" title="直线">╱</button>
+            <button class="draw-shape-chip" data-shape="arrow" title="箭头">↗</button>
+            <button class="draw-shape-chip" data-shape="rect" title="矩形">▭</button>
+            <button class="draw-shape-chip" data-shape="ellipse" title="椭圆">○</button>
+          </div>
+        </div>
+        <!-- 颜色（仅画笔模式） -->
+        <div class="style-group" id="drawFsColorGroup">
+          <label class="style-label">颜色</label>
+          <div class="color-chips" id="drawFsColorChips">
+            <button class="color-chip draw-fs-color active" data-color="#FF4747" style="background:#FF4747"></button>
+            <button class="color-chip draw-fs-color" data-color="#FFD93D" style="background:#FFD93D"></button>
+            <button class="color-chip draw-fs-color" data-color="#3DDC84" style="background:#3DDC84"></button>
+            <button class="color-chip draw-fs-color" data-color="#00C2FF" style="background:#00C2FF"></button>
+            <button class="color-chip draw-fs-color" data-color="#FFFFFF" style="background:#FFFFFF"></button>
+            <button class="color-chip draw-fs-color" data-color="#000000" style="background:#000000"></button>
+            <button class="color-chip color-chip-add" id="btnDrawFsAddColor" title="自定义颜色">+</button>
+          </div>
+          <input type="color" id="drawFsColorPicker" style="position:absolute;opacity:0;width:0;height:0;pointer-events:none" value="#FF4747" />
+        </div>
+        <!-- 粗细 -->
+        <div class="style-group" id="drawFsBrushGroup">
+          <label class="style-label">粗细 <strong id="drawFsBrushVal">4</strong>px</label>
+          <input class="range" type="range" id="drawFsBrushRange" min="1" max="20" step="1" value="4" />
+        </div>
+        <!-- 马赛克块大小（仅马赛克模式） -->
+        <div class="style-group hidden" id="drawFsMosaicGroup">
+          <label class="style-label">马赛克块 <strong id="drawFsMosaicVal">10</strong>px</label>
+          <input class="range" type="range" id="drawFsMosaicRange" min="4" max="30" step="2" value="10" />
+        </div>
+        <!-- 清除涂鸦 -->
+        <div class="text-actions">
+          <button class="btn btn-xs btn-ghost" id="drawFsClear">清除涂鸦</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 裁剪全屏编辑 ============ -->
+  <div class="crop-fullscreen hidden" id="cropFullscreen">
+    <header class="fs-topbar">
+      <button class="fs-back" id="cropFsBack">←</button>
+      <span class="fs-title">裁剪</span>
+      <button class="fs-done" id="cropFsDone">✓</button>
+    </header>
+    <div class="fs-canvas-area">
+      <canvas id="cropFsCanvas"></canvas>
+    </div>
+    <div class="fs-bottom">
+      <div class="fs-bottom-scroll">
+        <div class="style-group">
+          <label class="style-label">比例</label>
+          <div class="crop-chips" id="cropFsChips">
+            <button class="crop-chip active" data-crop="free">自由</button>
+            <button class="crop-chip" data-crop="square">1:1</button>
+            <button class="crop-chip" data-crop="wide">4:3</button>
+            <button class="crop-chip" data-crop="portrait">3:4</button>
+          </div>
+        </div>
+        <div class="style-group">
+          <button class="btn btn-xs btn-ghost" id="cropFsReset">重置选区</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 高级剪辑全屏编辑 ============ -->
+  <div class="advanced-fullscreen hidden" id="advancedFullscreen">
+    <!-- 顶栏：返回 + 模式标签 + 工具按钮 -->
+    <header class="adv-topbar">
+      <button class="adv-back" id="advFsBack">←</button>
+      <div class="adv-mode-tabs" id="advModeTabs">
+        <button class="adv-mode-tab active" data-mode="keyframe" id="advModeKeyframe" title="手动关键帧">
+          <span class="adv-mode-icon">◆</span><span class="adv-mode-text">关键帧</span>
+        </button>
+        <button class="adv-mode-tab" data-mode="track" id="advModeTrack" title="自动追踪">
+          <span class="adv-mode-icon">⊕</span><span class="adv-mode-text">追踪</span>
+        </button>
+      </div>
+      <div class="adv-topbar-actions">
+        <button class="adv-icon-btn" id="advFsUndo" title="撤销">↶</button>
+        <button class="adv-action-btn" id="advFsAddImage" title="添加图片图层">＋ 图片</button>
+      </div>
+    </header>
+
+    <!-- 追踪模式提示条 -->
+    <div class="adv-track-hint hidden" id="advTrackHint">
+      <span class="adv-track-hint-text" id="advTrackHintText">将图片放到目标位置，点击开始追踪</span>
+      <div class="adv-track-hint-controls">
+        <label class="adv-track-precision-label">追踪密度
+          <input type="number" id="advTrackPrecision" class="adv-track-precision-input" min="1" max="10" value="1" step="1">
+          <span class="adv-track-precision-unit">帧/次</span>
+        </label>
+        <label class="adv-track-relative-label">
+          <input type="checkbox" id="advTrackRelativeMode">
+          <span class="adv-track-relative-text">相对位置</span>
+        </label>
+        <button class="adv-track-hint-btn" id="advTrackStartBtn">开始追踪</button>
+      </div>
+    </div>
+
+    <!-- 画布区域 -->
+    <div class="adv-canvas-area">
+      <canvas id="advFsCanvas"></canvas>
+      <!-- 追踪锚点标记 -->
+      <div class="adv-track-anchor hidden" id="advTrackAnchor"></div>
+      <div class="adv-empty" id="advFsEmpty">
+        <div class="adv-empty-icon">⧉</div>
+        <div class="adv-empty-text">添加图片图层开始动画制作</div>
+        <button class="btn btn-accent btn-xs" id="advFsEmptyAdd">＋ 添加图片</button>
+      </div>
+    </div>
+
+    <!-- 图层条 -->
+    <div class="adv-layer-strip" id="advLayerStrip"></div>
+
+    <!-- 参数控制区 -->
+    <div class="adv-controls">
+      <!-- 位置行：X + Y 合并一行 -->
+      <div class="adv-ctrl-row">
+        <div class="adv-ctrl-cell">
+          <span class="adv-ctrl-label">X</span>
+          <input type="range" class="adv-range" id="advFsPosXRange" min="0" max="480" value="240">
+          <span class="adv-ctrl-val" id="advFsPosXVal">240</span>
+        </div>
+        <div class="adv-ctrl-cell">
+          <span class="adv-ctrl-label">Y</span>
+          <input type="range" class="adv-range" id="advFsPosYRange" min="0" max="480" value="240">
+          <span class="adv-ctrl-val" id="advFsPosYVal">240</span>
+        </div>
+        <button class="adv-kf-btn" id="advFsPosKfBtn" title="位置关键帧">◆</button>
+      </div>
+      <!-- 变换行：缩放 + 旋转 合并一行 -->
+      <div class="adv-ctrl-row">
+        <div class="adv-ctrl-cell">
+          <span class="adv-ctrl-label">缩放</span>
+          <input type="range" class="adv-range" id="advFsScaleRange" min="10" max="500" value="100">
+          <span class="adv-ctrl-val" id="advFsScaleVal">100%</span>
+        </div>
+        <div class="adv-ctrl-cell">
+          <span class="adv-ctrl-label">旋转</span>
+          <input type="range" class="adv-range" id="advFsRotateRange" min="-180" max="180" value="0">
+          <span class="adv-ctrl-val" id="advFsRotateVal">0°</span>
+        </div>
+        <button class="adv-kf-btn" id="advFsScaleKfBtn" title="缩放关键帧">◆</button>
+        <button class="adv-kf-btn" id="advFsRotateKfBtn" title="旋转关键帧">◆</button>
+      </div>
+      <!-- 播放控制行 -->
+      <div class="adv-playback">
+        <button class="adv-play-btn" id="advFsPlayBtn">▶</button>
+        <span class="adv-timecode" id="advFsTimecode">00:00.00</span>
+        <span class="adv-timecode-sep">/</span>
+        <span class="adv-duration" id="advFsDuration">00:00.00</span>
+      </div>
+    </div>
+
+    <!-- 时间轴 -->
+    <div class="adv-timeline">
+      <canvas id="advFsTimelineCanvas"></canvas>
+      <div id="advPlayhead" class="adv-playhead-line"></div>
+    </div>
+  </div>
+
+</div><!-- /.meme-app -->
+
+<!-- ============ 模态 ============ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox">
+    <div class="modal-title" id="modalTitle">提示</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ============ 脚本 ============ -->
+<script src="android-bridge.js"></script>
+<script src="gifuct.bundle.js"></script>
+<script src="meme.js?v=20260731h"></script>
+</body>
+</html>

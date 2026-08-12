@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const srcDir = path.join(root, 'www-backup');
 const outDir = path.join(root, 'www');
-const files = ['renderer.js', 'meme.js', 'android-bridge.js'];
+const files = ['renderer.js', 'meme.js', 'android-bridge.js', 'estimate.js', 'commands.js'];
 
 for (const file of files) {
   const src = fs.readFileSync(path.join(srcDir, file), 'utf8');
@@ -19,4 +19,11 @@ for (const file of files) {
   });
   fs.writeFileSync(path.join(outDir, file), result.code + '\n', 'utf8');
   console.log('minified', file, result.code.length, 'bytes');
+}
+
+// 非 JS 文件直接同步（HTML/CSS 等）
+for (const file of fs.readdirSync(srcDir)) {
+  if (files.includes(file)) continue;
+  fs.copyFileSync(path.join(srcDir, file), path.join(outDir, file));
+  console.log('copied', file);
 }

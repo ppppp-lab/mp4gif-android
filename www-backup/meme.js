@@ -3446,6 +3446,7 @@
 
   // ========== 图层管理 ==========
   function renderLayerList() {
+    if (!dom.layerList) return;
     dom.layerList.innerHTML = '';
     if (state.layers.length === 0) {
       dom.layerList.innerHTML = '<div class="layer-empty">暂无图层，添加文字或贴纸后会显示在这里</div>';

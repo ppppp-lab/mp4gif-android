@@ -206,6 +206,17 @@ a { text-decoration: none; color: inherit; }
   text-transform: uppercase;
   opacity: 0.5;
 }
+.footer-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.85;
+  letter-spacing: 1px;
+}
+.footer-link:active {
+  opacity: 1;
+}
 
 /* ========== 响应式 ========== */
 @media (max-height: 580px) {

@@ -141,7 +141,7 @@ button, input, select { font-family: inherit; font-size: inherit; color: inherit
   letter-spacing: -0.3px;
 }
 
-.ffmpeg-badge {
+.engine-badge {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -155,8 +155,8 @@ button, input, select { font-family: inherit; font-size: inherit; color: inherit
   background: var(--text-dim);
   flex-shrink: 0;
 }
-.ffmpeg-badge.ok .status-dot { background: var(--ok); }
-.ffmpeg-badge.ok { color: var(--ok); }
+.engine-badge.ok .status-dot { background: var(--ok); }
+.engine-badge.ok { color: var(--ok); }
 
 .topbar-import { display: none; } /* 移动端隐藏 */
 
