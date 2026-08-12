@@ -3311,16 +3311,6 @@
     ctx.setLineDash([6, 4]);
     ctx.strokeRect(l.x - w / 2 - 4, l.y - h / 2 - 4, w + 8, h + 8);
     ctx.setLineDash([]);
-    // 旋转手柄
-    const handleY = l.y - h / 2 - 26;
-    ctx.beginPath();
-    ctx.moveTo(l.x, l.y - h / 2 - 4);
-    ctx.lineTo(l.x, handleY);
-    ctx.stroke();
-    ctx.fillStyle = '#FF6B3D';
-    ctx.beginPath();
-    ctx.arc(l.x, handleY, 9, 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
   }
 
@@ -3939,15 +3929,22 @@
   }
 
   // ========== 触摸交互 ==========
-  let touch = { mode: 'none', id: null, type: null, sx: 0, sy: 0, ox: 0, oy: 0, dist: 0, size: 0, drawing: false };
+  let touch = {
+    mode: 'none', id: null, type: null, sx: 0, sy: 0, ox: 0, oy: 0,
+    dist: 0, size: 0, startAngle: 0, origRotation: 0, drawing: false,
+  };
+
+  function getCanvasPosXY(clientX, clientY) {
+    const rect = dom.canvas.getBoundingClientRect();
+    return {
+      x: (clientX - rect.left) * state.canvasWidth / rect.width,
+      y: (clientY - rect.top) * state.canvasHeight / rect.height,
+    };
+  }
 
   function getCanvasPos(e) {
     const t = e.touches[0] || e.changedTouches[0];
-    const rect = dom.canvas.getBoundingClientRect();
-    return {
-      x: (t.clientX - rect.left) * state.canvasWidth / rect.width,
-      y: (t.clientY - rect.top) * state.canvasHeight / rect.height,
-    };
+    return getCanvasPosXY(t.clientX, t.clientY);
   }
 
   function hitTest(x, y) {
@@ -4021,24 +4018,28 @@
       return;
     }
 
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const p1 = getCanvasPosXY(t1.clientX, t1.clientY);
+      const p2 = getCanvasPosXY(t2.clientX, t2.clientY);
+      const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      const hit = hitTest(mid.x, mid.y) || hitTest(p1.x, p1.y) || hitTest(p2.x, p2.y);
+      if (hit) {
+        touch.mode = 'scale';
+        touch.id = hit.id;
+        touch.type = hit.type;
+        touch.dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        touch.size = hit.size || 32;
+        touch.origRotation = hit.rotation || 0;
+        touch.startAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
+        state.selectedId = hit.id;
+        renderTextList(); renderLayerList(); render();
+      }
+      return;
+    }
+
     if (e.touches.length === 1) {
       const pos = getCanvasPos(e);
-      // 旋转手柄：选中图层上方的小圆点
-      const selected = getSelected();
-      if (selected) {
-        const box = getLayerBox(selected);
-        const hx = selected.x;
-        const hy = selected.y - box.h / 2 - 26;
-        if (Math.hypot(pos.x - hx, pos.y - hy) < 24) {
-          touch.mode = 'rotate';
-          touch.id = selected.id;
-          touch.startAngle = Math.atan2(pos.y - selected.y, pos.x - selected.x);
-          touch.origRotation = selected.rotation || 0;
-          state.selectedId = selected.id;
-          renderTextList(); renderLayerList(); render();
-          return;
-        }
-      }
       const hit = hitTest(pos.x, pos.y);
       if (hit) {
         touch.mode = 'drag'; touch.id = hit.id; touch.type = hit.type;
@@ -4055,6 +4056,8 @@
       touch.dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
       const l = getSelected();
       touch.size = l ? (l.size || 32) : 32;
+      touch.origRotation = l ? (l.rotation || 0) : 0;
+      touch.startAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
     }
   }
 
@@ -4087,22 +4090,16 @@
       const pos = getCanvasPos(e);
       const l = state.layers.find(x => x.id === touch.id);
       if (l) { l.x = touch.ox + (pos.x - touch.sx); l.y = touch.oy + (pos.y - touch.sy); render(); }
-    } else if (touch.mode === 'rotate' && e.touches.length === 1) {
-      const pos = getCanvasPos(e);
-      const l = state.layers.find(x => x.id === touch.id);
-      if (l) {
-        const angle = Math.atan2(pos.y - l.y, pos.x - l.x);
-        l.rotation = touch.origRotation + (angle - touch.startAngle);
-        render();
-      }
     } else if (touch.mode === 'scale' && e.touches.length === 2) {
       const t1 = e.touches[0], t2 = e.touches[1];
       const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
       const scale = dist / touch.dist;
       const newSize = Math.max(8, Math.min(200, Math.round(touch.size * scale)));
+      const angle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
       const l = getSelected();
       if (l) {
         l.size = newSize;
+        l.rotation = touch.origRotation + (angle - touch.startAngle);
         render();
       }
     }
@@ -4130,7 +4127,7 @@
       return;
     }
     if (e.touches.length === 0) {
-      if (touch.mode === 'drag' || touch.mode === 'scale' || touch.mode === 'rotate') pushHistory();
+      if (touch.mode === 'drag' || touch.mode === 'scale') pushHistory();
       touch.mode = 'none'; touch.id = null;
     } else if (e.touches.length === 1 && touch.mode === 'scale') {
       touch.mode = 'drag';
@@ -4961,6 +4958,7 @@
     if (drawFsTouch.drawing) {
       drawFsTouch.drawing = false;
       state.currentPath = null;
+      if (state.drawToolMode !== 'blur') renderDrawFs();
       pushHistory();
     }
   }
