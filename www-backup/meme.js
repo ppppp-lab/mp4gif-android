@@ -795,6 +795,7 @@
       const total = _advFrameTimes.length;
       const BATCH_SIZE = 5;
       const TRACK_INTERVAL = adv.trackInterval || 1;
+      let trackedFrames = 0;
       // 从当前帧的下一帧开始追踪
       let startFrame = getGifFrameIdxAtTime(adv.currentTime);
       let fi = startFrame + 1;
@@ -810,8 +811,12 @@
       // 模板更新：小幅吸收当前帧外观变化，同时向原始模板回拉，
       // 防止长期追踪时模板逐渐漂移到错误特征上
       function updateTemplate(matchCenterX, matchCenterY, frameCanvas) {
-        const blendRatio = 0.06;
-        const driftCorrection = adv.trackTemplateOriginalData ? 0.15 : 0;
+        trackedFrames++;
+        const blendRatio = 0.05;
+        // 前期允许模板适应外观变化，后期逐渐收紧到原始模板，抑制累积漂移
+        const driftCorrection = adv.trackTemplateOriginalData
+          ? Math.min(0.35, 0.10 + trackedFrames * 0.01)
+          : 0;
         const keepRatio = 1 - blendRatio - driftCorrection;
         const tw = adv.trackTemplateData.width;
         const th = adv.trackTemplateData.height;
