@@ -658,8 +658,8 @@
     // 搜索起点：将中心坐标转为左上角坐标
     const sx = Math.round(startX - r), sy = Math.round(startY - r);
 
-    // 搜索范围：适度增大以改善追踪精度
-    const searchRange = 60;
+    // 搜索范围：与运动约束对齐，避免“搜到了但判定为越界”导致漂移
+    const searchRange = Math.max(80, r * 3);
     const coarseStep = 2;
 
     // 第1级：粗搜索
@@ -795,7 +795,8 @@
       // 初始化上一帧编辑器坐标为起始位置
       let prevEditorX = st.x, prevEditorY = st.y;
       // 运动约束：最大允许每帧跳跃的像素数（GIF帧坐标系）
-      const maxFrameJump = r; // 模板半径的1倍
+      // 必须不小于搜索范围，否则目标移动稍快就会被误判为不可靠匹配
+      const maxFrameJump = Math.max(80, r * 2);
       // NCC 置信度阈值：低于此值认为匹配不可靠
       const NCC_THRESHOLD = 0.25;
 
