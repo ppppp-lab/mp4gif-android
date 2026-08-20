@@ -300,6 +300,7 @@
     trackAnchorY: -1,        // 追踪锚点画布坐标Y
     trackSearchRadius: 30,   // 追踪搜索半径（像素）
     trackTemplateData: null,  // 追踪模板像素数据
+    trackTemplateOriginalData: null,  // 追踪原始模板，防止长期更新后漂移
     trackAnchorGifX: -1,     // 锚点在GIF帧坐标系中的位置
     trackAnchorGifY: -1,
     tracking: false,          // 是否正在追踪中
@@ -535,7 +536,11 @@
     // 隐藏追踪锚点
     if (mode !== 'track' && dom.advTrackAnchor) dom.advTrackAnchor.classList.add('hidden');
     // 停止追踪
-    if (mode !== 'track') { adv.tracking = false; adv.trackTemplateData = null; }
+    if (mode !== 'track') {
+      adv.tracking = false;
+      adv.trackTemplateData = null;
+      adv.trackTemplateOriginalData = null;
+    }
     // 重置相对位置模式状态
     if (mode !== 'track') {
       adv.trackRelativeMode = false;
@@ -578,6 +583,7 @@
         0, 0, r * 2, r * 2);
     }
     adv.trackTemplateData = tctx.getImageData(0, 0, r * 2, r * 2);
+    adv.trackTemplateOriginalData = tctx.getImageData(0, 0, r * 2, r * 2);
     // 显示锚点标记
     if (dom.advTrackAnchor) {
       const canvasRect = dom.advFsCanvas.getBoundingClientRect();
@@ -763,6 +769,7 @@
       gifX - r, gifY - r, r * 2, r * 2,
       0, 0, r * 2, r * 2);
     adv.trackTemplateData = tctx.getImageData(0, 0, r * 2, r * 2);
+    adv.trackTemplateOriginalData = tctx.getImageData(0, 0, r * 2, r * 2);
 
     saveUndoState();
     adv.tracking = true;
@@ -800,10 +807,12 @@
       // NCC 置信度阈值：低于此值认为匹配不可靠
       const NCC_THRESHOLD = 0.25;
 
-      // 模板更新：将当前帧的匹配区域以 0.08 的权重混合到模板中
-      // 降低更新率防止累积漂移
+      // 模板更新：小幅吸收当前帧外观变化，同时向原始模板回拉，
+      // 防止长期追踪时模板逐渐漂移到错误特征上
       function updateTemplate(matchCenterX, matchCenterY, frameCanvas) {
-        const blendRatio = 0.08;
+        const blendRatio = 0.06;
+        const driftCorrection = adv.trackTemplateOriginalData ? 0.15 : 0;
+        const keepRatio = 1 - blendRatio - driftCorrection;
         const tw = adv.trackTemplateData.width;
         const th = adv.trackTemplateData.height;
         const fc = document.createElement('canvas');
@@ -815,10 +824,11 @@
         const newData = fctx.getImageData(0, 0, tw, th);
         const tData = adv.trackTemplateData.data;
         const nData = newData.data;
+        const oData = adv.trackTemplateOriginalData ? adv.trackTemplateOriginalData.data : null;
         for (let i = 0; i < tData.length; i += 4) {
-          tData[i]     = tData[i]     * (1 - blendRatio) + nData[i]     * blendRatio;
-          tData[i + 1] = tData[i + 1] * (1 - blendRatio) + nData[i + 1] * blendRatio;
-          tData[i + 2] = tData[i + 2] * (1 - blendRatio) + nData[i + 2] * blendRatio;
+          tData[i]     = tData[i]     * keepRatio + nData[i]     * blendRatio + (oData ? oData[i]     * driftCorrection : 0);
+          tData[i + 1] = tData[i + 1] * keepRatio + nData[i + 1] * blendRatio + (oData ? oData[i + 1] * driftCorrection : 0);
+          tData[i + 2] = tData[i + 2] * keepRatio + nData[i + 2] * blendRatio + (oData ? oData[i + 2] * driftCorrection : 0);
         }
       }
 
