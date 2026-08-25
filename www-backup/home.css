@@ -285,6 +285,29 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* ========== 响应式 ========== */
+@media (max-height: 700px) {
+  .home-header { padding: 10px 0 4px; }
+  .brand { font-size: 26px; }
+  .brand-sub { font-size: 10px; letter-spacing: 3px; margin-top: 2px; }
+  .brand-tip { font-size: 10px; margin-top: 3px; max-width: 260px; }
+  .home-capture { height: 52px; gap: 10px; padding: 0 14px; border-radius: 12px; }
+  .capture-icon { width: 28px; height: 22px; border-radius: 5px; }
+  .capture-icon::before { top: -5px; left: 7px; width: 10px; height: 5px; }
+  .capture-lens { inset: 3px; }
+  .capture-text strong { font-size: 14px; }
+  .capture-text small { font-size: 10px; }
+  .home-modes { gap: 12px; padding: 8px 0; }
+  .mode-info { padding: 10px 14px 12px; gap: 2px; }
+  .mode-name { font-size: 15px; }
+  .mode-desc { font-size: 11px; line-height: 1.4; }
+  .mode-preview-meme { gap: 4px; padding: 8px; }
+  .meme-top-text, .meme-bottom-text { font-size: 16px; }
+  .mode-icon { width: 52px; height: 52px; font-size: 28px; }
+  .mode-icon-label { bottom: 6px; right: 10px; font-size: 13px; }
+  .home-footer { padding: 8px 0 calc(8px + var(--safe-b)); }
+  .footer-link { margin-top: 4px; font-size: 10px; }
+}
+
 @media (max-height: 580px) {
   .home-header { padding: 24px 0 12px; }
   .brand { font-size: 32px; }
