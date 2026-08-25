@@ -41,8 +41,8 @@ android {
         applicationId "com.local.mp4gif"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1"
+        versionCode 3
+        versionName "1.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         resConfigs 'zh', 'en'  // 只保留中英语言资源，移除其他50+语言
         ndk {
