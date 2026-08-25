@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">MP4转GIF工具</string>
     <string name="title_activity_main">MP4转GIF工具</string>
+    <string name="unauthorized_title">未授权版本</string>
+    <string name="unauthorized_message">当前安装包签名与官方版本不一致，可能已被篡改或重新打包。\n请从官方渠道安装。</string>
+    <string name="unauthorized_exit">退出</string>
     <string name="package_name">com.local.mp4gif</string>
     <string name="custom_url_scheme">com.local.mp4gif</string>
 </resources>

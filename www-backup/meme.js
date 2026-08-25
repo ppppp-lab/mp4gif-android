@@ -54,10 +54,10 @@
 
   // ========== 平台预设配置 ==========
   const PLATFORM_PRESETS = {
-    wechat:     { width: 300, height: 300, maxSizeKB: 1024, label: '微信' },
-    qq:         { width: 240, height: 240, maxSizeKB: 512,  label: 'QQ' },
-    xiaohongshu:{ width: 360, height: 360, maxSizeKB: 2048, label: '小红书' },
-    douyin:     { width: 360, height: 360, maxSizeKB: 1024, label: '抖音' },
+    wechat:     { width: 300, height: 300, maxSizeKB: 1024, label: t('meme.platform.wechat.name') },
+    qq:         { width: 240, height: 240, maxSizeKB: 512,  label: t('meme.platform.qq.name') },
+    xiaohongshu:{ width: 360, height: 360, maxSizeKB: 2048, label: t('meme.platform.xiaohongshu.name') },
+    douyin:     { width: 360, height: 360, maxSizeKB: 1024, label: t('meme.platform.douyin.name') },
   };
 
   // ============================================================
@@ -717,16 +717,16 @@
   function runTracking() {
     const layer = adv.layers.find(l => l.id === adv.selectedLayerId);
     if (!layer) {
-      showToast('请先选中一个图层', 'warn');
+      showToast(t('meme.track.needLayer'), 'warn');
       return;
     }
     if (!adv.isGif || !advGifAccCanvas) {
-      showToast('静态图无法追踪，请使用GIF素材', 'warn');
+      showToast(t('meme.track.needGif'), 'warn');
       return;
     }
     // 相对位置模式：检查是否已设置追踪点
     if (adv.trackRelativeMode && !adv.trackPointSet) {
-      showToast('请先在画布上点击设置追踪点', 'warn');
+      showToast(t('meme.track.needPoint'), 'warn');
       return;
     }
 
@@ -781,7 +781,7 @@
     }
     
     // 立即显示反馈弹框
-    showModal('追踪中', '<div style="text-align:center;padding:16px 0"><div style="font-size:14px;color:#aaa" id="trackProgressText">正在追踪目标位置...</div></div>', []);
+    showModal(t('meme.track.title'), '<div style="text-align:center;padding:16px 0"><div style="font-size:14px;color:#aaa" id="trackProgressText">' + t('meme.track.progress') + '</div></div>', []);
 
     // 用 setTimeout 让弹框先渲染，再执行耗时追踪
     setTimeout(() => {
@@ -900,7 +900,7 @@
         }
         // 更新进度
         const progressEl = document.getElementById('trackProgressText');
-        if (progressEl) progressEl.textContent = '追踪中 ' + Math.round(fi / total * 100) + '%';
+        if (progressEl) progressEl.textContent = t('meme.track.percent', { percent: Math.round(fi / total * 100) });
 
         if (fi < total) {
           // 还有帧要处理，让出UI线程后继续
@@ -917,7 +917,7 @@
           syncAdvancedSliders();
           renderAdvancedFs();
           renderAdvancedTimeline();
-          showToast('追踪完成', 'success');
+          showToast(t('meme.track.done'), 'success');
         }
       }
 
@@ -929,7 +929,7 @@
 
   function startRecording() {
     if (!adv.layers.find(l => l.id === adv.selectedLayerId)) {
-      showToast('请先选中一个图层', 'warn');
+    showToast(t('meme.track.needLayer'), 'warn');
       return;
     }
     adv.recording = true;
@@ -943,7 +943,7 @@
     adv.recording = false;
     adv.recordLayerId = null;
     if (adv.playing) advancedPlayToggle();
-    showToast('录制完成', 'info');
+    showToast(t('meme.record.done'), 'info');
     syncAdvancedSliders();
     renderAdvancedFs();
     renderAdvancedTimeline();
@@ -975,9 +975,9 @@
       let pressTimer;
       card.addEventListener('touchstart', () => {
         pressTimer = setTimeout(() => {
-          showModal('删除图层', '确认删除 "' + escapeHtml(layer.name) + '" ？', [
-            { label: '取消', type: 'ghost', onClick: () => {} },
-            { label: '删除', type: 'primary', onClick: () => { removeAdvancedLayer(layer.id); renderAdvLayerStrip(); }},
+          showModal(t('meme.layer.deleteTitle'), t('meme.layer.deleteBody', { name: escapeHtml(layer.name) }), [
+          { label: t('common.cancel'), type: 'ghost', onClick: () => {} },
+          { label: t('common.delete'), type: 'primary', onClick: () => { removeAdvancedLayer(layer.id); renderAdvLayerStrip(); }},
           ]);
         }, 600);
       });
@@ -1081,8 +1081,8 @@
 
     // ========== 侧边栏图标点击 ==========
     const TOOL_NAMES = {
-      template: '模板', text: '文字', filter: '滤镜',
-      draw: '画笔', crop: '裁剪', platform: '平台'
+      template: t('meme.panel.template'), text: t('meme.tool.text'), filter: t('meme.tool.filter'),
+      draw: t('meme.tool.draw'), crop: t('meme.tool.crop'), platform: t('meme.tool.platform')
     };
     let currentTool = 'text';
 
@@ -1158,10 +1158,10 @@
     dom.textFsDone.onclick = closeTextFs;
     dom.textFsAdd.onclick = () => {
       // 添加新文字层并切换选中
-      const t = makeText('文字', state.canvasWidth / 2, state.canvasHeight / 2);
-      state.layers.push(t);
-      state.selectedId = t.id;
-      fillTextFsControls(t);
+      const textLayer = makeText(t('meme.text.default'), state.canvasWidth / 2, state.canvasHeight / 2);
+      state.layers.push(textLayer);
+      state.selectedId = textLayer.id;
+      fillTextFsControls(textLayer);
       renderTextFsList();
       renderTextFs();
       pushHistory();
@@ -1423,13 +1423,13 @@
   async function captureFromCamera() {
     try {
       if (!window.api || !window.api.openCamera) {
-        showToast('相机功能不可用', 'error');
+        showToast(t('meme.camera.unavailable'), 'error');
         return;
       }
       const paths = await window.api.openCamera();
       if (paths && paths.length > 0) await loadSource(paths[0]);
     } catch (e) {
-      showToast('拍照失败: ' + (e.message || e), 'error');
+      showToast(t('meme.camera.fail', { error: e.message || e }), 'error');
     }
   }
 
@@ -1437,13 +1437,13 @@
   async function importImage() {
     try {
       if (!window.api || !window.api.openImageDialog) {
-        showToast('图片选择不可用', 'error');
+        showToast(t('meme.image.unavailable'), 'error');
         return;
       }
       const paths = await window.api.openImageDialog();
       if (paths && paths.length > 0) await loadSource(paths[0]);
     } catch (e) {
-      showToast('导入图片失败: ' + (e.message || e), 'error');
+      showToast(t('meme.image.importFail', { error: e.message || e }), 'error');
     }
   }
 
@@ -1451,18 +1451,18 @@
   async function importFromClipboard() {
     try {
       if (!window.api || !window.api.getClipboardImage) {
-        showToast('剪贴板读取不可用', 'error');
+        showToast(t('meme.clipboard.unavailable'), 'error');
         return;
       }
       const path = await window.api.getClipboardImage();
       if (path) {
         await loadSource(path);
-        showToast('已从剪贴板导入', 'info');
+        showToast(t('meme.clipboard.imported'), 'info');
       } else {
-        showToast('剪贴板中没有图片', 'warn');
+        showToast(t('meme.clipboard.empty'), 'warn');
       }
     } catch (e) {
-      showToast('剪贴板读取失败: ' + (e.message || e), 'error');
+      showToast(t('meme.clipboard.fail', { error: e.message || e }), 'error');
     }
   }
 
@@ -1478,7 +1478,7 @@
       const paths = await window.api.openVideoDialog(false);
       if (paths && paths.length > 0) await loadSource(paths[0]);
     } catch (e) {
-      showToast('导入失败: ' + (e.message || e), 'error');
+      showToast(t('meme.import.fail', { error: e.message || e }), 'error');
     }
   }
 
@@ -1526,7 +1526,7 @@
     // WebView可用内存取当前可用内存的60%（保守估计，其他进程也在用）
     const availableMB = Math.round(info.availMB * 0.6);
     if (neededMB > availableMB) {
-      showToast('文件过大（约需' + Math.round(neededMB) + 'MB内存），当前可用约' + availableMB + 'MB，请选择更小的文件', 'error');
+      showToast(t('meme.file.tooLarge', { needed: Math.round(neededMB), available: availableMB }), 'error');
       return false;
     }
     return true;
@@ -1549,7 +1549,7 @@
       const isGifFile = forceTryGif || /\.gif($|\?|#)/i.test(path);
       if (isGifFile && window.gifuct) {
         // 显示导入中弹框
-        showModal('导入中', '<div style="text-align:center;padding:20px 0"><div style="font-size:14px;color:#aaa">请等待...</div></div>', []);
+        showModal(t('meme.import.loading'), '<div style="text-align:center;padding:20px 0"><div style="font-size:14px;color:#aaa">' + t('meme.import.waiting') + '</div></div>', []);
         try {
           // 读取并解码GIF
           // 尝试多种路径加载：convertFileSrc → 原始路径
@@ -1678,7 +1678,7 @@
       const isVideoFile = /\.(mp4|mov|avi|mkv|webm|3gp)($|\?|#)/i.test(path);
       if (isVideoFile) {
         // 视频文件：创建 <video> 提取首帧
-        showModal('导入中', '<div style="text-align:center;padding:20px 0"><div style="font-size:14px;color:#aaa">正在加载视频...</div></div>', []);
+        showModal(t('meme.import.loading'), '<div style="text-align:center;padding:20px 0"><div style="font-size:14px;color:#aaa">' + t('meme.import.loadingVideo') + '</div></div>', []);
         const video = document.createElement('video');
         video.muted = true;
         video.playsInline = true;
@@ -1699,14 +1699,14 @@
         };
         video.onerror = () => {
           dom.modalOverlay.classList.remove('show');
-          showToast('无法加载视频', 'error');
+          showToast(t('meme.video.loadFail'), 'error');
           resolve();
         };
       } else {
         // 静态图片
         const img = new Image();
         img.onload = () => { applySourceImage(img, path); resolve(); };
-        img.onerror = () => { showToast('无法加载图片', 'error'); resolve(); };
+        img.onerror = () => { showToast(t('meme.image.loadFail'), 'error'); resolve(); };
         img.src = src;
       }
     });
@@ -2538,7 +2538,7 @@
       const info = await getDeviceMemInfo();
       const availableMB = Math.round(info.availMB * 0.4);
       if (advMemMB > availableMB) {
-        showToast('该GIF过大（高级模式约需' + Math.round(advMemMB) + 'MB内存），当前可用约' + availableMB + 'MB，请选择更小的GIF', 'error');
+        showToast(t('meme.adv.memTooLarge', { needed: Math.round(advMemMB), available: availableMB }), 'error');
         return;
       }
     }
@@ -2593,7 +2593,7 @@
         drawLayerToCtx(l, tctx);
         l.x = origX; l.y = origY;
         const img = new Image();
-        const layerData = { name: '文字: ' + l.text.substring(0, 10), origX, origY, rotation: l.rotation || 0 };
+        const layerData = { name: t('meme.text.prefix', { text: l.text.substring(0, 10) }), origX, origY, rotation: l.rotation || 0 };
         img.onload = () => {
           const id = 'adv_import_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
           const layer = { id, image: img, name: layerData.name, startTime: 0, endTime: duration, visible: true, keyframes: { pos: [{ t: 0, x: layerData.origX, y: layerData.origY }], scale: [{ t: 0, s: 1 }], rot: [{ t: 0, r: layerData.rotation * 180 / Math.PI }], opacity: [{ t: 0, o: 1 }] } };
@@ -2624,7 +2624,7 @@
         const cx = minX + cw2 / 2, cy = minY + ch2 / 2;
         img.onload = () => {
           const id = 'adv_import_draw_' + Date.now() + '_' + pIdx;
-          const layer = { id, image: img, name: '画笔 ' + (pIdx + 1), startTime: 0, endTime: duration, visible: true, keyframes: { pos: [{ t: 0, x: cx, y: cy }], scale: [{ t: 0, s: 1 }], rot: [{ t: 0, r: 0 }], opacity: [{ t: 0, o: 1 }] } };
+          const layer = { id, image: img, name: t('meme.brush.prefix', { index: pIdx + 1 }), startTime: 0, endTime: duration, visible: true, keyframes: { pos: [{ t: 0, x: cx, y: cy }], scale: [{ t: 0, s: 1 }], rot: [{ t: 0, r: 0 }], opacity: [{ t: 0, o: 1 }] } };
           adv.layers.push(layer);
           dom.advFsEmpty.style.display = 'none';
           if (!adv.selectedLayerId) adv.selectedLayerId = id;
@@ -2655,7 +2655,7 @@
 
   async function addAdvancedImage() {
     try {
-      if (adv.layers.length >= ADV_LAYER_LIMIT) { showToast('图层数量已达上限(' + ADV_LAYER_LIMIT + ')，请先删除部分图层', 'warn'); return; }
+      if (adv.layers.length >= ADV_LAYER_LIMIT) { showToast(t('meme.adv.layerLimit', { limit: ADV_LAYER_LIMIT }), 'warn'); return; }
       if (window.api && window.api.openImageDialog) {
         const paths = await window.api.openImageDialog();
         if (paths && paths.length > 0) {
@@ -2663,7 +2663,7 @@
           if (img) {
             saveUndoState();
             const id = 'adv_img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
-            const name = (paths[0].split('/').pop() || paths[0].split('\\').pop() || '图片').substring(0, 10);
+            const name = (paths[0].split('/').pop() || paths[0].split('\\').pop() || t('meme.adv.imageName')).substring(0, 10);
             const layer = {
               id, image: img, name, startTime: 0, endTime: adv.videoDuration || 3, visible: true,
               keyframes: {
@@ -2709,7 +2709,7 @@
         input.click();
       }
     } catch (e) {
-      showToast('添加图片失败: ' + (e.message || e), 'error');
+      showToast(t('meme.adv.addImageFail', { error: e.message || e }), 'error');
     }
   }
 
@@ -2993,12 +2993,12 @@
         const hintTextEl = document.getElementById('advTrackHintText');
         if (adv.trackRelativeMode) {
           if (hintEl) hintEl.classList.add('relative-mode');
-          if (hintTextEl) hintTextEl.textContent = '点击画布选择追踪点（如人脸），图层将保持相对位置';
+          if (hintTextEl) hintTextEl.textContent = t('meme.adv.hint.relativeSelect');
           // 隐藏锚点标记（等待用户重新设置）
           if (dom.advTrackAnchor) dom.advTrackAnchor.classList.add('hidden');
         } else {
           if (hintEl) hintEl.classList.remove('relative-mode');
-          if (hintTextEl) hintTextEl.textContent = '将图片放到目标位置，点击开始追踪';
+          if (hintTextEl) hintTextEl.textContent = t('meme.adv.hint.place');
           if (dom.advTrackAnchor) dom.advTrackAnchor.classList.add('hidden');
         }
       });
@@ -3247,7 +3247,7 @@
             setTrackAnchor(cx, cy);
             adv.trackPointSet = true;
             const hintTextEl = document.getElementById('advTrackHintText');
-            if (hintTextEl) hintTextEl.textContent = '追踪点已设置，点击「开始追踪」';
+            if (hintTextEl) hintTextEl.textContent = t('meme.adv.hint.pointSet');
             return;
           }
           // 普通追踪模式：检测是否点到了图层
@@ -3346,12 +3346,12 @@
   function applyTemplate(tpl) {
     const w = state.canvasWidth, h = state.canvasHeight;
     const hints = {
-      blank: '空白模板，自由创作',
-      classic: '已添加顶部和底部文字（经典 meme 格式）',
-      top: '已添加顶部文字',
-      bottom: '已添加底部文字',
-      'white-box': '已设置白色边框',
-      'black-bar': '已添加黑色条幅文字',
+      blank: t('meme.tpl.hint.blank'),
+      classic: t('meme.tpl.hint.classic'),
+      top: t('meme.tpl.hint.top'),
+      bottom: t('meme.tpl.hint.bottom'),
+      'white-box': t('meme.tpl.hint.whiteBox'),
+      'black-bar': t('meme.tpl.hint.blackBar'),
     };
     dom.tplHint.textContent = hints[tpl] || '';
 
@@ -3359,22 +3359,22 @@
 
     if (tpl === 'classic') {
       state.layers = state.layers.filter(l => !l._tpl);
-      const top = makeText('顶部文字', w / 2, 30, { _tpl: true, font: 'impact', stroke: 4, size: 28 });
-      const bottom = makeText('底部文字', w / 2, h - 30, { _tpl: true, font: 'impact', stroke: 4, size: 28 });
+      const top = makeText(t('meme.tpl.top'), w / 2, 30, { _tpl: true, font: 'impact', stroke: 4, size: 28 });
+      const bottom = makeText(t('meme.tpl.bottom'), w / 2, h - 30, { _tpl: true, font: 'impact', stroke: 4, size: 28 });
       state.layers.push(top, bottom);
       state.selectedId = top.id;
     } else if (tpl === 'top') {
-      const top = makeText('顶部文字', w / 2, 30, { font: 'impact', stroke: 4, size: 28 });
+      const top = makeText(t('meme.tpl.top'), w / 2, 30, { font: 'impact', stroke: 4, size: 28 });
       state.layers.push(top);
       state.selectedId = top.id;
     } else if (tpl === 'bottom') {
-      const bottom = makeText('底部文字', w / 2, h - 30, { font: 'impact', stroke: 4, size: 28 });
+      const bottom = makeText(t('meme.tpl.bottom'), w / 2, h - 30, { font: 'impact', stroke: 4, size: 28 });
       state.layers.push(bottom);
       state.selectedId = bottom.id;
     } else if (tpl === 'white-box') {
       state.border = { style: 'white', width: 12 };
     } else if (tpl === 'black-bar') {
-      const bar = makeText('文字', w / 2, h / 2, { color: '#FFD93D', stroke: 0, size: 36, _tpl: true });
+      const bar = makeText(t('meme.text.default'), w / 2, h / 2, { color: '#FFD93D', stroke: 0, size: 36, _tpl: true });
       state.layers.push(bar);
       state.selectedId = bar.id;
     }
@@ -3412,24 +3412,24 @@
     if (!dom.layerList) return;
     dom.layerList.innerHTML = '';
     if (state.layers.length === 0) {
-      dom.layerList.innerHTML = '<div class="layer-empty">暂无图层，添加文字或涂鸦后会显示在这里</div>';
+      dom.layerList.innerHTML = '<div class="layer-empty">' + t('meme.layer.empty') + '</div>';
       return;
     }
     [...state.layers].reverse().forEach((l, idx) => {
       const realIdx = state.layers.length - 1 - idx;
       const item = document.createElement('div');
       item.className = 'layer-item' + (l.id === state.selectedId ? ' active' : '');
-      const icon = l.type === 'text' ? '字' : l.type === 'draw' ? '✎' : '层';
-      const name = l.type === 'text' ? (l.text.replace(/\n/g, ' ').slice(0, 15) || '空文字') : l.type === 'draw' ? '涂鸦' : '图层';
+      const icon = l.type === 'text' ? t('meme.layer.textIcon') : l.type === 'draw' ? '✎' : t('meme.layer.textIcon');
+      const name = l.type === 'text' ? (l.text.replace(/\n/g, ' ').slice(0, 15) || t('meme.layer.textEmptyName')) : l.type === 'draw' ? t('meme.layer.drawName') : t('meme.layer.genericName');
       item.innerHTML = `
         <div class="layer-icon">${escapeHtml(icon)}</div>
         <span class="layer-name">${escapeHtml(name)}</span>
         <div class="layer-actions">
-          <button class="layer-btn" data-act="up" title="上移">↑</button>
-          <button class="layer-btn" data-act="down" title="下移">↓</button>
-          <button class="layer-btn" data-act="flip" title="翻转">⇄</button>
-          <button class="layer-btn" data-act="dup" title="复制">⎘</button>
-          <button class="layer-btn danger" data-act="del" title="删除">✕</button>
+          <button class="layer-btn" data-act="up" title="${t('meme.layer.moveUp')}">↑</button>
+          <button class="layer-btn" data-act="down" title="${t('meme.layer.moveDown')}">↓</button>
+          <button class="layer-btn" data-act="flip" title="${t('meme.layer.flip')}">⇄</button>
+          <button class="layer-btn" data-act="dup" title="${t('meme.layer.dup')}">⎘</button>
+          <button class="layer-btn danger" data-act="del" title="${t('meme.layer.del')}">✕</button>
         </div>
       `;
       item.onclick = (e) => {
@@ -3509,7 +3509,7 @@
       state.blurSourceData = null; state.blurSourceKey = '';
       render();
       pushHistory();
-      showToast('已裁剪为 ' + newW + '×' + newH, 'info');
+      showToast(t('meme.crop.done', { width: newW, height: newH }), 'info');
     };
     img.src = tmp.toDataURL();
   }
@@ -3532,7 +3532,7 @@
     // 重新渲染底图到新尺寸
     render();
     pushHistory();
-    showToast('已应用' + preset.label + '预设 (' + w + '×' + h + ', 限' + (preset.maxSizeKB / 1024).toFixed(preset.maxSizeKB % 1024 === 0 ? 0 : 1) + 'MB)', 'info');
+    showToast(t('meme.preset.applied', { label: preset.label, width: w, height: h, size: (preset.maxSizeKB / 1024).toFixed(preset.maxSizeKB % 1024 === 0 ? 0 : 1) }), 'info');
   }
 
   // ========== 一键加白边 ==========
@@ -3576,7 +3576,7 @@
       state.blurSourceData = null; state.blurSourceKey = '';
       render();
       pushHistory();
-      showToast('已加白边 (+' + borderPx + 'px)', 'info');
+      showToast(t('meme.border.white', { px: borderPx }), 'info');
     };
     img.src = out.toDataURL();
   }
@@ -3625,7 +3625,7 @@
         state.blurSourceData = null; state.blurSourceKey = '';
         render();
         pushHistory();
-        showToast('已加圆角 (r=' + radius + 'px)', 'info');
+        showToast(t('meme.round.added', { px: radius }), 'info');
       };
       result.src = out.toDataURL('image/png');
     };
@@ -3706,7 +3706,7 @@
       state.mosaicCache = null; state.mosaicCacheKey = '';
       render();
       pushHistory();
-      showToast('已去除底色', 'info');
+      showToast(t('meme.magic.removed'), 'info');
     };
     img.src = out.toDataURL('image/png');
   }
@@ -3714,13 +3714,13 @@
   // ========== 表情包拼接 ==========
   async function spliceMeme(direction) {
     if (!state.sourceImage) {
-      showToast('请先导入素材', 'warn');
+      showToast(t('meme.needSource'), 'warn');
       return;
     }
     try {
       // 选择第二张图
       if (!window.api || !window.api.openImageDialog) {
-        showToast('图片选择不可用', 'error');
+        showToast(t('meme.image.unavailable'), 'error');
         return;
       }
       const paths = await window.api.openImageDialog();
@@ -3728,7 +3728,7 @@
 
       // 加载第二张图
       const img2 = await loadImageAsync(paths[0]);
-      if (!img2) { showToast('无法加载第二张图', 'error'); return; }
+      if (!img2) { showToast(t('meme.image.loadSecondFail'), 'error'); return; }
 
       const w1 = state.canvasWidth, h1 = state.canvasHeight;
       const w2 = img2.naturalWidth, h2 = img2.naturalHeight;
@@ -3777,14 +3777,14 @@
           state.mosaicCache = null; state.mosaicCacheKey = '';
           render();
           pushHistory();
-          showToast(direction === 'horizontal' ? '已横向拼接' : '已纵向拼接', 'info');
+          showToast(direction === 'horizontal' ? t('meme.splice.horizontal') : t('meme.splice.vertical'), 'info');
         } catch (e) {
-          showToast('拼接结果应用失败: ' + (e.message || e), 'error');
+          showToast(t('meme.splice.applyFail', { error: e.message || e }), 'error');
         }
       };
       result.src = out.toDataURL();
     } catch (e) {
-      showToast('拼接失败: ' + (e.message || e), 'error');
+      showToast(t('meme.splice.fail', { error: e.message || e }), 'error');
     }
   }
 
@@ -3803,7 +3803,7 @@
     if (!state.sourceImage) return;
     const targetMB = parseFloat(dom.targetSizeInput.value);
     if (!targetMB || targetMB <= 0) {
-      showToast('请输入有效的目标体积', 'warn');
+      showToast(t('meme.compress.invalid'), 'warn');
       return;
     }
     const targetBytes = targetMB * 1024 * 1024;
@@ -3856,17 +3856,17 @@
             state.mosaicCache = null; state.mosaicCacheKey = '';
             render();
             pushHistory();
-            showToast('已压缩至约 ' + (bestSize / 1024 / 1024).toFixed(2) + 'MB', 'info');
+            showToast(t('meme.compress.done', { size: (bestSize / 1024 / 1024).toFixed(2) }), 'info');
           } catch (e) {
-            showToast('压缩结果应用失败: ' + (e.message || e), 'error');
+            showToast(t('meme.compress.applyFail', { error: e.message || e }), 'error');
           }
         };
         img.src = bestDataUrl;
       } else {
-        showToast('无法压缩到目标体积，请减小目标值', 'warn');
+        showToast(t('meme.compress.fail'), 'warn');
       }
     } catch (e) {
-      showToast('压缩失败: ' + (e.message || e), 'error');
+      showToast(t('meme.compress.error', { error: e.message || e }), 'error');
     }
     state.selectedId = oldSel;
     render();
@@ -3874,7 +3874,7 @@
 
   // ========== 用户参数预设 ==========
   function saveUserPreset() {
-    const name = '预设_' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    const name = t('meme.preset.name', { time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) });
     const preset = {
       name: name,
       canvasWidth: state.canvasWidth,
@@ -3887,7 +3887,7 @@
     presets.push(preset);
     localStorage.setItem('meme_presets', JSON.stringify(presets));
     renderPresetList();
-    showToast('已保存参数预设', 'info');
+    showToast(t('meme.preset.saved'), 'info');
   }
 
   function getUserPresets() {
@@ -3924,7 +3924,7 @@
 
     render();
     pushHistory();
-    showToast('已应用预设: ' + preset.name, 'info');
+    showToast(t('meme.preset.appliedName', { name: preset.name }), 'info');
   }
 
   function deleteUserPreset(index) {
@@ -3941,7 +3941,7 @@
     dom.presetList.innerHTML = '';
     const presets = getUserPresets();
     if (presets.length === 0) {
-      dom.presetList.innerHTML = '<div style="color:var(--text-dim);font-size:11px;text-align:center;padding:8px 0">暂无已保存的预设</div>';
+      dom.presetList.innerHTML = '<div style="color:var(--text-dim);font-size:11px;text-align:center;padding:8px 0">' + t('meme.preset.empty') + '</div>';
       return;
     }
     presets.forEach((preset, idx) => {
@@ -4338,19 +4338,19 @@
         await window.api.saveBase64(tmpPath, base64);
         if (window.api.shareImage) {
           const r = await window.api.shareImage(tmpPath);
-          if (!r || !r.success) showToast('分享失败', 'error');
+          if (!r || !r.success) showToast(t('meme.share.fail'), 'error');
         } else {
           const a = document.createElement('a');
           a.href = dataUrl; a.download = tmpName; a.click();
-          showToast('已下载，请用其他应用分享', 'info');
+          showToast(t('meme.download.share'), 'info');
         }
       } else {
         const a = document.createElement('a');
         a.href = dataUrl; a.download = tmpName; a.click();
-        showToast('已下载，请用其他应用分享', 'info');
+        showToast(t('meme.download.share'), 'info');
       }
     } catch (e) {
-      showToast('分享失败: ' + (e.message || e), 'error');
+      showToast(t('meme.share.fail'), 'error');
     }
     state.selectedId = oldSel;
     render();
@@ -4385,17 +4385,17 @@
       if (window.api.saveBase64) {
         const saved = await window.api.saveBase64(outputPath, base64);
         if (saved) {
-          showToast('导出成功', 'ok');
+          showToast(t('meme.export.success'), 'ok');
         } else {
-          showToast('导出失败：无法写入所选文件', 'error');
+          showToast(t('meme.export.writeFail'), 'error');
         }
       } else {
         const a = document.createElement('a');
         a.href = dataUrl; a.download = defaultName; a.click();
-        showToast('已下载', 'info');
+        showToast(t('meme.download.done'), 'info');
       }
     } catch (e) {
-      showToast('导出失败: ' + (e.message || e), 'error');
+      showToast(t('meme.export.fail', { error: e.message || e }), 'error');
     }
     state.selectedId = oldSel;
     render();
@@ -4443,7 +4443,7 @@
     // 停止GIF播放
     stopGifPlayback();
 
-    showModal('导出GIF', '<div style="text-align:center;padding:16px 0"><div style="font-size:14px;color:#aaa" id="exportProgressText">正在渲染帧 0/' + totalFrames + '...</div><div style="margin-top:8px;height:4px;background:#333;border-radius:2px;overflow:hidden"><div id="exportProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s"></div></div></div>', []);
+    showModal(t('meme.export.gifTitle'), '<div style="text-align:center;padding:16px 0"><div style="font-size:14px;color:#aaa" id="exportProgressText">' + t('meme.export.renderingFrame', { index: 0, total: totalFrames }) + '</div><div style="margin-top:8px;height:4px;background:#333;border-radius:2px;overflow:hidden"><div id="exportProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width 0.3s"></div></div></div>', []);
 
     // 创建累积canvas渲染GIF帧
     const accCanvas = document.createElement('canvas');
@@ -4513,7 +4513,7 @@
 
         const progressEl = document.getElementById('exportProgressText');
         const progressBar = document.getElementById('exportProgressBar');
-        if (progressEl) progressEl.textContent = '正在渲染帧 ' + (fi + 1) + '/' + exportFrameCount + '...';
+        if (progressEl) progressEl.textContent = t('meme.export.renderingFrame', { index: fi + 1, total: exportFrameCount });
         if (progressBar) progressBar.style.width = ((fi + 1) / exportFrameCount * 70) + '%';
 
         await new Promise(r => setTimeout(r, 0));
@@ -4525,7 +4525,7 @@
       state.selectedId = origSelectedId;
 
       if (tempPaths.length === 0) {
-        showToast('渲染帧失败，无法导出', 'error');
+        showToast(t('meme.export.renderFail'), 'error');
         dom.modalOverlay.classList.remove('show');
         _exporting = false;
         return;
@@ -4558,7 +4558,7 @@
         state.gifCurrentTime = origGifCurrentTime;
         if (origGifPlaying) startGifPlayback();
         // 导出成功提示
-        showToast('导出成功', 'ok');
+        showToast(t('meme.export.success'), 'ok');
         _exporting = false;
       };
       const errHandler = (e) => {
@@ -4569,7 +4569,7 @@
           try { gifskiPlugin.removeListener('gifski:error', errHandler); } catch(e2) {}
         }
         dom.modalOverlay.classList.remove('show');
-        showToast('GIF编码失败: ' + (e.message || '未知错误'), 'error');
+        showToast(t('meme.export.gifEncodeFail', { error: e.message || t('error.unknown') }), 'error');
         _exporting = false;
       };
 
@@ -4593,11 +4593,11 @@
 
       const progressEl2 = document.getElementById('exportProgressText');
       const progressBar2 = document.getElementById('exportProgressBar');
-      if (progressEl2) progressEl2.textContent = '正在编码GIF...';
+      if (progressEl2) progressEl2.textContent = t('meme.export.encodingGif');
       if (progressBar2) progressBar2.style.width = '80%';
 
     } catch (e) {
-      showToast('导出失败: ' + (e.message || e), 'error');
+      showToast(t('meme.export.fail', { error: e.message || e }), 'error');
       dom.modalOverlay.classList.remove('show');
       state.sourceImage = origSourceImage;
       state.gifCurrentTime = origGifCurrentTime;
@@ -4643,7 +4643,7 @@
   // ============================================================
   // ========== 文字全屏编辑 ==========
   function openTextFs() {
-    if (!state.sourceImage) { showToast('请先导入素材', 'warn'); return; }
+    if (!state.sourceImage) { showToast(t('meme.needSource'), 'warn'); return; }
     // 如果没有选中的文字层，找第一个或新建
     let layer = getSelected();
     if (!layer || layer.type !== 'text') {
@@ -4653,10 +4653,10 @@
         layer = firstText;
       } else {
         // 新建一个文字层
-        const t = makeText('文字', state.canvasWidth / 2, state.canvasHeight / 2);
-        state.layers.push(t);
-        state.selectedId = t.id;
-        layer = t;
+        const textLayer = makeText(t('meme.text.default'), state.canvasWidth / 2, state.canvasHeight / 2);
+        state.layers.push(textLayer);
+        state.selectedId = textLayer.id;
+        layer = textLayer;
         pushHistory();
       }
     }
@@ -4714,7 +4714,7 @@
       const preview = t.text.replace(/\n/g, ' ').slice(0, 10);
       const nameSpan = document.createElement('span');
       nameSpan.className = 'fs-text-list-name';
-      nameSpan.textContent = preview || '空';
+      nameSpan.textContent = preview || t('meme.text.empty');
       nameSpan.onclick = () => {
         state.selectedId = t.id;
         fillTextFsControls(t);
@@ -4829,7 +4829,7 @@
 
   // ========== 画笔全屏编辑 ==========
   function openDrawFs() {
-    if (!state.sourceImage) { showToast('请先导入素材', 'warn'); return; }
+    if (!state.sourceImage) { showToast(t('meme.needSource'), 'warn'); return; }
     // 关闭底部面板
     dom.memePanel.classList.remove('open');
     dom.memePanelOverlay.classList.remove('show');
@@ -5043,7 +5043,7 @@
   // ============================================================
   // ========== 裁剪全屏编辑 ==========
   function openCropFs() {
-    if (!state.sourceImage) { showToast('请先导入素材', 'warn'); return; }
+    if (!state.sourceImage) { showToast(t('meme.needSource'), 'warn'); return; }
     // 关闭底部面板
     dom.memePanel.classList.remove('open');
     dom.memePanelOverlay.classList.remove('show');
@@ -5201,7 +5201,7 @@
     const w = state.canvasWidth, h = state.canvasHeight;
     const cx = Math.round(cropFs.x), cy = Math.round(cropFs.y);
     const cw = Math.round(cropFs.w), ch = Math.round(cropFs.h);
-    if (cw <= 0 || ch <= 0) { showToast('裁剪区域无效', 'warn'); return; }
+    if (cw <= 0 || ch <= 0) { showToast(t('meme.crop.invalid'), 'warn'); return; }
     if (cx === 0 && cy === 0 && cw === w && ch === h) {
       closeCropFs();
       return;
@@ -5228,7 +5228,7 @@
       state.mosaicCache = null; state.mosaicCacheKey = '';
       render();
       closeCropFs();
-      showToast('已裁剪为 ' + cw + '×' + ch, 'info');
+      showToast(t('meme.crop.done', { width: cw, height: ch }), 'info');
     };
     img.src = tmp.toDataURL();
   }

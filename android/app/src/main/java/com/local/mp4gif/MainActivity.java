@@ -71,10 +71,10 @@ public class MainActivity extends BridgeActivity {
     private void showUnauthorizedDialog() {
         try {
             new android.app.AlertDialog.Builder(this)
-                    .setTitle("未授权版本")
-                    .setMessage("当前安装包签名与官方版本不一致，可能已被篡改或重新打包。\n请从官方渠道安装。")
+                    .setTitle(getString(R.string.unauthorized_title))
+                    .setMessage(getString(R.string.unauthorized_message))
                     .setCancelable(false)
-                    .setPositiveButton("退出", (dialog, which) -> finish())
+                    .setPositiveButton(getString(R.string.unauthorized_exit), (dialog, which) -> finish())
                     .show();
         } catch (Exception ignored) {
             finish();

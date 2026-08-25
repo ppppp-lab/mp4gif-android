@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const srcDir = path.join(root, 'www-backup');
 const outDir = path.join(root, 'www');
-const files = ['renderer.js', 'meme.js', 'android-bridge.js', 'estimate.js', 'commands.js', 'home.js'];
+const files = ['renderer.js', 'meme.js', 'android-bridge.js', 'estimate.js', 'commands.js', 'home.js', 'i18n.js'];
 
 for (const file of files) {
   const src = fs.readFileSync(path.join(srcDir, file), 'utf8');

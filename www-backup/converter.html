@@ -4,25 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0C0E12" />
-  <title>MP4 转 GIF</title>
+  <title data-i18n-doc-title="converter.emptyTitle">MP4 转 GIF</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="privacy-consent.css" />
 </head>
 <body>
+<script src="i18n.js"></script>
 <script src="privacy-consent.js"></script>
 <div class="app">
   <!-- ============ 顶栏 ============ -->
   <header class="topbar">
-    <a href="index.html" class="topbar-back" title="返回首页">←</a>
+    <a href="index.html" class="topbar-back" data-i18n-title="converter.backTitle" title="返回首页">←</a>
     <span class="topbar-title">MP4 → GIF</span>
     <div class="engine-badge" id="engineStatus">
       <span class="status-dot"></span>
-      <span id="engineVer">检测中</span>
+      <span id="engineVer" data-i18n="converter.engineChecking">检测中</span>
     </div>
     <!-- 桌面端拖拽区（移动端隐藏） -->
     <div class="topbar-import">
       <div class="dropzone" id="dropzone">
-        <span id="dropzoneText">点击选择视频</span>
+        <span id="dropzoneText" data-i18n="converter.dropzone">点击选择视频</span>
       </div>
     </div>
   </header>
@@ -34,10 +35,10 @@
     <div class="preview" id="previewWrap">
       <div class="empty-state" id="emptyState">
         <div class="empty-icon">▶</div>
-        <div class="empty-title">选择视频</div>
+        <div class="empty-title" data-i18n="converter.emptyTitle">选择视频</div>
         <div class="empty-sub">MP4 · MOV · AVI · MKV · WEBM</div>
         <div class="empty-actions">
-          <button class="btn btn-accent" id="btnSelectFile">选择视频</button>
+          <button class="btn btn-accent" id="btnSelectFile" data-i18n="converter.selectVideo">选择视频</button>
         </div>
       </div>
       <video id="videoPlayer" style="display:none"></video>
@@ -49,8 +50,8 @@
     <!-- 时间轴 -->
     <div class="timeline" id="timelineWrap" style="display:none">
       <div class="tl-head">
-        <span>起 <em id="timelineStartLabel">0.0s</em></span>
-        <span>止 <em id="timelineEndLabel">0.0s</em></span>
+        <span><span data-i18n="converter.start">起</span> <em id="timelineStartLabel">0.0s</em></span>
+        <span><span data-i18n="converter.end">止</span> <em id="timelineEndLabel">0.0s</em></span>
       </div>
       <div class="dual-slider">
         <div class="track"></div>
@@ -82,52 +83,52 @@
       <span class="info-tag" id="infoDuration">—</span>
       <span class="info-tag" id="infoFps">—</span>
       <span class="info-tag" id="infoSize">—</span>
-      <button class="chip chip-action" id="btnChangeVideo">换</button>
+      <button class="chip chip-action" id="btnChangeVideo" data-i18n="converter.change">换</button>
     </div>
 
     <!-- 输出参数 -->
     <div class="card">
       <div class="card-head">
-        <span class="card-title">输出参数</span>
-        <button class="chip" id="btnReset">重置</button>
+        <span class="card-title" data-i18n="converter.outputParams">输出参数</span>
+        <button class="chip" id="btnReset" data-i18n="converter.reset">重置</button>
       </div>
       <div class="card-body">
         <div class="field">
-          <label class="field-label" for="resSelect">分辨率</label>
+          <label class="field-label" for="resSelect" data-i18n="converter.resolution">分辨率</label>
           <select class="ctrl" id="resSelect">
             <option value="240">240p</option>
             <option value="360">360p</option>
             <option value="480" selected>480p</option>
             <option value="640">640p</option>
             <option value="720">720p</option>
-            <option value="custom">自定义</option>
+            <option value="custom" data-i18n="converter.custom">自定义</option>
           </select>
           <div class="wh-row hidden" id="customWhWrap">
-            <input class="ctrl" type="number" id="customWidth" placeholder="宽" min="32" step="2" />
+            <input class="ctrl" type="number" id="customWidth" data-i18n-placeholder="converter.widthPlaceholder" placeholder="宽" min="32" step="2" />
             <span class="wh-x">×</span>
-            <input class="ctrl" type="number" id="customHeight" placeholder="高(空=等比)" min="32" step="2" />
+            <input class="ctrl" type="number" id="customHeight" data-i18n-placeholder="converter.heightPlaceholder" placeholder="高(空=等比)" min="32" step="2" />
           </div>
         </div>
         <div class="field">
-          <label class="field-label">帧率 <strong id="fpsVal">12</strong> fps</label>
+          <label class="field-label"><span data-i18n="converter.fps">帧率</span> <strong id="fpsVal">12</strong> fps</label>
           <input class="range" type="range" id="fpsRange" min="5" max="30" step="1" value="12" />
         </div>
         <div class="field">
-          <label class="field-label">循环</label>
+          <label class="field-label" data-i18n="converter.loop">循环</label>
           <div class="radio-row">
-            <label class="radio-item"><input type="radio" name="loopMode" id="loopInfinite" value="infinite" checked /> 无限</label>
-            <label class="radio-item"><input type="radio" name="loopMode" id="loopCustom" value="custom" /> <input class="ctrl ctrl-xs" type="number" id="loopCount" min="0" step="1" value="0" /> 次</label>
+            <label class="radio-item"><input type="radio" name="loopMode" id="loopInfinite" value="infinite" checked /><span data-i18n="converter.infinite"> 无限</span></label>
+            <label class="radio-item"><input type="radio" name="loopMode" id="loopCustom" value="custom" /> <input class="ctrl ctrl-xs" type="number" id="loopCount" min="0" step="1" value="0" /><span data-i18n="converter.times"> 次</span></label>
           </div>
         </div>
         <div class="field field-row">
-          <span class="field-label">调色板优化</span>
+          <span class="field-label" data-i18n="converter.palette">调色板优化</span>
           <label class="toggle">
             <input type="checkbox" id="paletteToggle" checked />
             <span class="toggle-track"></span>
           </label>
         </div>
         <div class="field">
-          <label class="field-label">质量 <strong id="qualityVal">85</strong>%</label>
+          <label class="field-label"><span data-i18n="converter.quality">质量</span> <strong id="qualityVal">85</strong>%</label>
           <input class="range" type="range" id="qualityRange" min="1" max="100" step="1" value="85" />
         </div>
       </div>
@@ -136,12 +137,12 @@
     <!-- 体积限制策略 -->
     <div class="card" id="limitPanel">
       <div class="card-head">
-        <span class="card-title">体积限制</span>
+        <span class="card-title" data-i18n="converter.sizeLimit">体积限制</span>
       </div>
       <div class="card-body">
         <label class="check-item">
           <input type="checkbox" id="limitToggle" />
-          <span>强制上限</span>
+          <span data-i18n="converter.forceLimit">强制上限</span>
           <div class="limit-mb-input">
             <input class="ctrl ctrl-mb" type="number" id="limitMB" min="1" max="100" step="1" value="20" />
             <span class="limit-mb-unit">MB</span>
@@ -151,15 +152,15 @@
           <label class="radio-item">
             <input type="radio" name="strategy" value="1" checked />
             <div class="strategy-text">
-              <strong>缩分辨率</strong>
-              <span>保持截取时长，逐步降低宽度</span>
+              <strong data-i18n="converter.strategy.resolution">缩分辨率</strong>
+              <span data-i18n="converter.strategy.resolutionDesc">保持截取时长，逐步降低宽度</span>
             </div>
           </label>
           <label class="radio-item">
             <input type="radio" name="strategy" value="2" />
             <div class="strategy-text">
-              <strong>缩时长</strong>
-              <span>保持分辨率，逐步缩减时长与帧率</span>
+              <strong data-i18n="converter.strategy.duration">缩时长</strong>
+              <span data-i18n="converter.strategy.durationDesc">保持分辨率，逐步缩减时长与帧率</span>
             </div>
           </label>
         </div>
@@ -179,9 +180,9 @@
         <div class="gauge-swatch" style="background:#2E333D"></div>
       </div>
       <span id="gaugeEstText"></span>
-      <button id="btnRecompute">重新计算</button>
+      <button id="btnRecompute" data-i18n="converter.recompute">重新计算</button>
       <pre id="logPre"></pre>
-      <button id="btnClearLog">清空</button>
+      <button id="btnClearLog" data-i18n="converter.clearLog">清空</button>
     </div>
 
     <!-- Dock 占位 -->
@@ -196,18 +197,18 @@
         <div class="dock-main">
           <span class="dock-value" id="gaugeValue">0.00</span>
           <span class="dock-unit">MB</span>
-          <span class="dock-status" id="gaugeStatus">待导入</span>
+          <span class="dock-status" id="gaugeStatus" data-i18n="converter.dockWaiting">待导入</span>
         </div>
       </div>
       <div class="dock-actions">
-        <button class="chip chip-limit" id="btnDockLimit" title="修改体积上限">20 MB</button>
-        <button class="btn btn-accent btn-export" id="btnExport" disabled>导出 GIF</button>
+        <button class="chip chip-limit" id="btnDockLimit" data-i18n-title="converter.dockLimitTitle" title="修改体积上限">20 MB</button>
+        <button class="btn btn-accent btn-export" id="btnExport" disabled data-i18n="converter.export">导出 GIF</button>
       </div>
     </div>
     <div class="dock-progress hidden" id="progressWrap">
       <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
       <span id="progressPct">0%</span>
-      <button class="btn btn-xs btn-ghost" id="btnCancel">中断</button>
+      <button class="btn btn-xs btn-ghost" id="btnCancel" data-i18n="converter.cancel">中断</button>
     </div>
   </div>
 </div>
@@ -215,7 +216,7 @@
 <!-- ============ 模态 ============ -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalBox">
-    <div class="modal-title" id="modalTitle">提示</div>
+    <div class="modal-title" id="modalTitle" data-i18n="converter.modalDefault">提示</div>
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-actions" id="modalActions"></div>
   </div>

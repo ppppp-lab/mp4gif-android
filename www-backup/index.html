@@ -10,22 +10,23 @@
   <link rel="stylesheet" href="privacy-consent.css" />
 </head>
 <body>
+<script src="i18n.js"></script>
 <script src="privacy-consent.js"></script>
 <div class="home">
 
   <!-- 品牌标题 -->
   <header class="home-header">
     <h1 class="brand">POCKET<br>MEME</h1>
-    <p class="brand-sub">选个模式开始</p>
-    <p class="brand-tip">做表情包需先将视频转成 GIF，再加工成表情包</p>
+    <p class="brand-sub" data-i18n="home.brandSub">选个模式开始</p>
+    <p class="brand-tip" data-i18n="home.brandTip">做表情包需先将视频转成 GIF，再加工成表情包</p>
   </header>
 
   <!-- 拍摄视频入口 -->
   <button class="home-capture" id="btnOpenCamera">
     <span class="capture-icon" aria-hidden="true"><span class="capture-lens"></span></span>
     <span class="capture-text">
-      <strong>拍摄视频</strong>
-      <small>最长 60 秒 · 录完直接转 GIF</small>
+      <strong data-i18n="home.capture.title">拍摄视频</strong>
+      <small data-i18n="home.capture.subtitle">最长 60 秒 · 录完直接转 GIF</small>
     </span>
   </button>
 
@@ -39,8 +40,8 @@
         <span class="mode-icon-label">GIF</span>
       </div>
       <div class="mode-info">
-        <h2 class="mode-name">MP4 转 GIF</h2>
-        <p class="mode-desc">视频裁剪、调帧率、限体积，输出高质量 GIF</p>
+        <h2 class="mode-name" data-i18n="home.mode.gif.name">MP4 转 GIF</h2>
+        <p class="mode-desc" data-i18n="home.mode.gif.desc">视频裁剪、调帧率、限体积，输出高质量 GIF</p>
       </div>
     </a>
 
@@ -51,8 +52,8 @@
         <span class="meme-bottom-text">BOTTOM TEXT</span>
       </div>
       <div class="mode-info">
-        <h2 class="mode-name">表情包工坊</h2>
-        <p class="mode-desc">加文字、滤镜、涂鸦，做专属表情包</p>
+        <h2 class="mode-name" data-i18n="home.mode.meme.name">表情包工坊</h2>
+        <p class="mode-desc" data-i18n="home.mode.meme.desc">加文字、滤镜、涂鸦，做专属表情包</p>
       </div>
     </a>
 
@@ -61,7 +62,7 @@
   <!-- 底部 -->
   <footer class="home-footer">
     <span class="footer-text">Pocket Meme Studio</span>
-    <a class="footer-link" href="privacy.html">隐私政策</a>
+    <a class="footer-link" href="privacy.html" data-i18n="home.privacy">隐私政策</a>
   </footer>
 
 </div>

@@ -122,23 +122,23 @@
       const available = !!(res && res.available);
       if (available) {
         dom.engineStatus.classList.add('ok');
-        dom.engineVer.textContent = (res && res.version) || '已就绪';
+        dom.engineVer.textContent = (res && res.version) || t('engine.ready');
       } else {
         dom.engineStatus.classList.remove('ok');
-        dom.engineVer.textContent = '不可用';
+        dom.engineVer.textContent = t('engine.unavailable');
         setImportEnabled(false);
         dom.btnExport.disabled = true;
         showModal({
-          title: 'Gifski 引擎不可用',
-          body: 'Gifski 编码库加载失败，请确认设备/模拟器架构受支持后重试。<br><span class="muted mono">' + escapeHtml((res && res.version) || '') + '</span>',
-          actions: [{ label: '我知道了', type: 'primary' }],
+          title: t('engine.failTitle'),
+          body: t('engine.failBody', { version: escapeHtml((res && res.version) || '') }),
+          actions: [{ label: t('common.ok'), type: 'primary' }],
           error: true,
         });
       }
     } catch (e) {
       dom.engineStatus.classList.remove('ok');
-      dom.engineVer.textContent = '检测失败';
-      showToast('Gifski 检测失败：' + (e.message || e), 'error');
+      dom.engineVer.textContent = t('engine.fail');
+      showToast(t('engine.failToast', { error: e.message || e }), 'error');
     }
 
     bindEvents();
@@ -155,11 +155,11 @@
       window.api.benchmark().then((benchSec) => {
         if (benchSec && benchSec > 0) {
           Estimate.setDeviceBench(benchSec);
-          appendLog('info', '性能校准完成：基准编码 ' + benchSec.toFixed(2) + 's');
+          appendLog('info', t('benchmark.done', { seconds: benchSec.toFixed(2) }));
           // 若已有视频导入，刷新预估
           if (state.sourcePath) recompute();
         } else {
-          appendLog('info', '性能校准不可用，使用保守估算');
+          appendLog('info', t('benchmark.unavailable'));
         }
       }).catch(() => {
         // 校准失败，不影响使用，退化为公式估算
@@ -215,7 +215,7 @@
     // 视频已加载后，双击预览区可更换视频
     dom.previewWrap.addEventListener('dblclick', () => {
       if (!state.sourcePath) return;
-      if (state.converting) { showToast('正在转换中，请先中断或等待完成', 'warn'); return; }
+      if (state.converting) { showToast(t('convert.busy'), 'warn'); return; }
       window.api.openVideoDialog(false).then((paths) => {
         if (paths && paths.length) loadVideo(paths[0]);
       });
@@ -224,7 +224,7 @@
     // ---- 移动端"更换视频"按钮 ----
     if (dom.btnChangeVideo) {
       dom.btnChangeVideo.addEventListener('click', () => {
-        if (state.converting) { showToast('正在转换中，请先中断或等待完成', 'warn'); return; }
+        if (state.converting) { showToast(t('convert.busy'), 'warn'); return; }
         window.api.openVideoDialog(false).then((paths) => {
           if (paths && paths.length) loadVideo(paths[0]);
         });
@@ -293,8 +293,8 @@
     // Dock 上的限制按钮：点击弹窗修改
     dom.btnDockLimit.addEventListener('click', async () => {
       const choice = await showChoice(
-        '体积上限',
-        '当前上限 ' + state.sizeLimitMB + ' MB，选择新上限：',
+        t('sizeLimit.title'),
+        t('sizeLimit.body', { limit: state.sizeLimitMB }),
         [
           { label: '5 MB', value: '5' },
           { label: '10 MB', value: '10' },
@@ -330,7 +330,7 @@
     dom.btnExport.addEventListener('click', onExportClick);
     dom.btnCancel.addEventListener('click', onCancelClick);
     dom.btnClearLog.addEventListener('click', () => {
-      dom.logPre.innerHTML = '<span class="log-empty">暂无日志</span>';
+      dom.logPre.innerHTML = '<span class="log-empty">' + t('log.empty') + '</span>';
     });
 
     // ---- 主进程回调注册（仅注册一次） ----
@@ -350,7 +350,7 @@
   // ============ 文件导入 ============
   async function loadVideo(path) {
     if (state.converting) {
-      showToast('正在转换中，请先中断或等待完成', 'warn');
+      showToast(t('convert.busy'), 'warn');
       return;
     }
     try {
@@ -387,7 +387,7 @@
       dom.infoSize.textContent = formatBytes(meta.sizeBytes);
       dom.infoSize.classList.toggle('warn', sizeMB > MAX_SRC_MB);
       if (sizeMB > MAX_SRC_MB) {
-        showToast('源文件过大（' + sizeMB.toFixed(1) + 'MB > 150MB），不建议转换，但可继续', 'warn');
+        showToast(t('file.tooLarge', { size: sizeMB.toFixed(1) }), 'warn');
       }
 
       // 导入成功提示 + 启用导出
@@ -399,11 +399,11 @@
       recompute();
     } catch (e) {
       // 探测失败：文件损坏或格式不支持（非转换上下文，直接弹模态）
-      appendLog('stderr', '探测失败：' + (e.message || e));
+      appendLog('stderr', t('probe.failLog', { error: e.message || e }));
       showModal({
-        title: '源文件损坏',
-        body: '文件无法读取，可能已损坏或格式不支持。<br><span class="muted mono">' + escapeHtml(e.message || String(e)) + '</span>',
-        actions: [{ label: '知道了', type: 'primary' }],
+        title: t('file.corruptTitle'),
+        body: t('file.corruptBody', { error: escapeHtml(e.message || String(e)) }),
+        actions: [{ label: t('common.ok'), type: 'primary' }],
         error: true,
       });
     }
@@ -593,7 +593,7 @@
         effective.height = r.height;
         effective.estMB = r.estMB;
         effective.failed = !!r.failed;
-        strategyNote = `策略1 · 适配至 ${r.width}×${r.height}` + (r.failed ? '（已到下限仍超限）' : ' · 达标');
+        strategyNote = t('strategy.1', { width: r.width, height: r.height }) + (r.failed ? t('strategy.failed') : t('strategy.ok'));
       } else {
         // 策略2：固定分辨率缩时长
         const r = Estimate.shrinkDuration(
@@ -604,7 +604,7 @@
         effective.fps = r.fps;
         effective.estMB = r.estMB;
         effective.failed = !!r.failed;
-        strategyNote = `策略2 · 时长缩至 ${r.newEndSec.toFixed(1)}s，FPS ${r.fps}` + (r.failed ? '（已到下限仍超限）' : ' · 达标');
+        strategyNote = t('strategy.2', { seconds: r.newEndSec.toFixed(1), fps: r.fps }) + (r.failed ? t('strategy.failed') : t('strategy.ok'));
       }
     }
     state.effective = effective;
@@ -615,9 +615,9 @@
     // 更新预估文本
     let estText;
     if (state.limit20) {
-      estText = `目标上限 ${state.sizeLimitMB}MB · ${strategyNote} · 预估 <strong>${effective.estMB.toFixed(2)} MB</strong>`;
+      estText = t('estimate.limited', { limit: state.sizeLimitMB, note: strategyNote, size: effective.estMB.toFixed(2) });
     } else {
-      estText = `预估输出 <strong>${effective.estMB.toFixed(2)} MB</strong>（未启用限制）`;
+      estText = t('estimate.unlimited', { size: effective.estMB.toFixed(2) });
     }
     dom.gaugeEstText.innerHTML = estText;
 
@@ -646,10 +646,10 @@
 
     // 状态标签
     let status, statusCls = '';
-    if (ratio > 1) { status = '超限'; statusCls = 'over'; }
-    else if (ratio > 0.95) { status = '接近上限'; statusCls = 'over'; }
-    else if (ratio > 0.7) { status = '预算紧'; statusCls = 'near'; }
-    else { status = '预算内'; statusCls = ''; }
+    if (ratio > 1) { status = t('status.over'); statusCls = 'over'; }
+    else if (ratio > 0.95) { status = t('status.nearLimit'); statusCls = 'over'; }
+    else if (ratio > 0.7) { status = t('status.tight'); statusCls = 'near'; }
+    else { status = t('status.ok'); statusCls = ''; }
     dom.gaugeStatus.textContent = status;
     dom.gaugeStatus.classList.toggle('over', statusCls === 'over');
     dom.gaugeStatus.classList.toggle('near', statusCls === 'near');
@@ -658,8 +658,8 @@
   function resetGaugeAndCmd() {
     updateGauge(0);
     dom.gaugeValue.textContent = '0.00';
-    dom.gaugeStatus.textContent = state.sourcePath ? '计算中' : '待导入';
-    dom.gaugeEstText.innerHTML = state.sourcePath ? '计算中…' : '导入视频后显示预估';
+    dom.gaugeStatus.textContent = state.sourcePath ? t('status.calculating') : t('status.waiting');
+    dom.gaugeEstText.innerHTML = state.sourcePath ? t('status.calculating') + '…' : t('estimate.hint');
   }
 
   function escapeHtml(s) {
@@ -700,23 +700,23 @@
       updateTimelineVisual();
     }
     recompute();
-    showToast('参数已重置', 'ok');
+    showToast(t('reset.done'), 'ok');
   }
 
   // ============ 导出流程 ============
   async function onExportClick() {
-    if (!state.sourcePath) { showToast('请先导入视频', 'warn'); return; }
+    if (!state.sourcePath) { showToast(t('export.needVideo'), 'warn'); return; }
     if (state.converting) return;
 
     // 开限制且策略失败 → 弹兜底对话框
     if (state.limit20 && state.effective && state.effective.failed) {
       const choice = await showChoice(
-        `无法在 ${state.sizeLimitMB}MB 内达标`,
-        `当前参数即使在最低限制下仍超出 ${state.sizeLimitMB}MB 上限。请选择处理方式：`,
+        t('limit.title', { limit: state.sizeLimitMB }),
+        t('limit.body', { limit: state.sizeLimitMB }),
         [
-          { label: '手动裁剪时长', value: 'cut' },
-          { label: '手动降分辨率', value: 'res' },
-          { label: '关闭限制直接导出', value: 'off', type: 'primary' },
+          { label: t('limit.cut'), value: 'cut' },
+          { label: t('limit.res'), value: 'res' },
+          { label: t('limit.off'), value: 'off', type: 'primary' },
         ]
       );
       if (choice === 'cut') { dom.timelineWrap.scrollIntoView({ behavior: 'smooth' }); dom.endSlider.focus(); return; }
@@ -734,7 +734,7 @@
     try {
       outputPath = await window.api.saveGifDialog(defaultName);
     } catch (e) {
-      showToast('打开保存对话框失败：' + (e.message || e), 'error');
+      showToast(t('save.dialogFail', { error: e.message || e }), 'error');
       return;
     }
     if (!outputPath) return; // 用户取消
@@ -799,8 +799,8 @@
     document.getElementById('progressWrap').classList.remove('hidden');
     dom.progressFill.style.width = '0%';
     dom.progressPct.textContent = '0%';
-    showToast('导出中，除终止按键外已锁定，无法操作', 'info');
-    appendLog('info', '开始转换：' + params.outputPath);
+    showToast(t('export.locked'), 'info');
+    appendLog('info', t('converter.logStart', { path: params.outputPath }));
     // 保持屏幕常亮
     if (window.api.keepScreenOn) { try { await window.api.keepScreenOn(); } catch(e) {} }
 
@@ -813,7 +813,7 @@
   }
 
   function onConversionDone(d) {
-    appendLog('info', '转换完成：' + d.outputPath);
+    appendLog('info', t('converter.logDone', { path: d.outputPath }));
     dom.progressFill.style.width = '100%';
     dom.progressPct.textContent = '100%';
 
@@ -821,24 +821,24 @@
 
     finishConvertUI();
 
-    showToast('导出完成', 'ok', 2000);
+    showToast(t('export.doneToast'), 'ok', 2000);
 
     // 弹出跳转按钮：导出完成后可一键跳转到表情包工坊继续加工
     const outputPath = d.outputPath || '';
     const encodedPath = encodeURIComponent(outputPath);
     showModal({
-      title: '导出完成',
-      body: 'GIF 已成功导出。<br>可以去表情包工坊继续加工，加文字、滤镜等。',
+      title: t('export.doneTitle'),
+      body: t('export.doneBody'),
       actions: [
         {
-          label: '去工坊加工',
+          label: t('export.goMeme'),
           type: 'primary',
           onClick: () => {
             location.href = 'meme.html?gif=' + encodedPath;
             return false; // 不关闭弹窗，直接跳转
           },
         },
-        { label: '完成', type: 'ghost' },
+        { label: t('common.done'), type: 'ghost' },
       ],
     });
   }
@@ -850,30 +850,30 @@
       finishConvertUI();
       return;
     }
-    appendLog('stderr', '错误：' + (e.message || e.raw || '未知错误'));
+    appendLog('stderr', t('error.prefix', { error: e.message || e.raw || t('error.unknown') }));
 
     const kind = e.kind || 'generic';
-    let title = '转换出错';
-    let body = e.message || '发生未知错误。';
+    let title = t('error.title');
+    let body = e.message || t('error.unknown');
     switch (kind) {
       case 'source-corrupt':
-        title = '源文件损坏';
-        body = '文件无法读取，可能已损坏或格式不支持。';
+        title = t('error.corruptTitle');
+        body = t('error.corruptBody');
         break;
       case 'disk':
-        title = '保存失败';
-        body = '保存路径不可写，请检查磁盘权限或更换路径。';
+        title = t('error.saveTitle');
+        body = t('error.saveBody');
         break;
       case 'timeout':
-        title = '转换超时';
-        body = '转换超时，可尝试缩短时长或降低分辨率后重试。';
+        title = t('error.timeoutTitle');
+        body = t('error.timeoutBody');
         break;
       default:
         break;
     }
 
     finishConvertUI();
-    showModal({ title, body, actions: [{ label: '知道了', type: 'primary' }], error: true });
+    showModal({ title, body, actions: [{ label: t('common.ok'), type: 'primary' }], error: true });
   }
 
   function finishConvertUI() {
@@ -892,8 +892,8 @@
     if (!state.jobId) return;
     // 立即标记为非转换状态并更新 UI，防止残余进度事件继续刷新
     state.converting = false;
-    dom.progressPct.textContent = '中断中…';
-    appendLog('info', '正在中断…');
+    dom.progressPct.textContent = t('cancel.progress');
+    appendLog('info', t('cancel.log'));
     const jobId = state.jobId;  // 保存 jobId，finishConvertUI 会清空
     finishConvertUI();
     dom.progressFill.style.width = '0%';
@@ -901,7 +901,7 @@
     // 异步发送取消请求到原生端
     try { await window.api.cancelConversion(jobId); }
     catch (e) { /* ignore */ }
-    appendLog('info', '已中断转换');
+    appendLog('info', t('cancel.done'));
   }
 
   // ============ 日志 ============
@@ -917,11 +917,11 @@
 
   // ============ 模态对话框 ============
   function showModal({ title, body, actions, error }) {
-    dom.modalTitle.textContent = title || '提示';
+    dom.modalTitle.textContent = title || t('converter.modalDefault');
     dom.modalBody.innerHTML = body || '';
     dom.modalBox.classList.toggle('modal-error', !!error);
     dom.modalActions.innerHTML = '';
-    (actions || [{ label: '确定', type: 'primary' }]).forEach((a) => {
+    (actions || [{ label: t('common.confirm'), type: 'primary' }]).forEach((a) => {
       const btn = document.createElement('button');
       btn.className = 'btn ' + (a.type === 'primary' ? 'btn-primary' : a.type === 'danger' ? 'btn-danger' : a.type === 'ghost' ? 'btn-ghost' : '');
       btn.textContent = a.label;
