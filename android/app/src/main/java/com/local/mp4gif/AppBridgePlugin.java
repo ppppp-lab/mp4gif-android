@@ -723,6 +723,54 @@ public class AppBridgePlugin extends Plugin {
     }
 
     // =========================================================================
+    // 9.5) openVideoCamera —— 调用系统相机录制视频
+    // =========================================================================
+
+    @PluginMethod
+    public void openVideoCamera(PluginCall call) {
+        int durationLimit = call.getInt("durationLimit", 60);
+        try {
+            Intent intent = new Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE);
+            if (intent.resolveActivity(getContext().getPackageManager()) != null) {
+                intent.putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, durationLimit);
+                intent.putExtra(android.provider.MediaStore.EXTRA_VIDEO_QUALITY, 1);
+                call.setKeepAlive(true);
+                startActivityForResult(call, intent, "onVideoCameraResult");
+            } else {
+                call.resolve(makePathsResult(null));
+            }
+        } catch (Exception e) {
+            call.resolve(makePathsResult(null));
+        }
+    }
+
+    @ActivityCallback
+    private void onVideoCameraResult(PluginCall call, @Nullable ActivityResult result) {
+        if (call == null) return;
+        if (result == null || result.getResultCode() != android.app.Activity.RESULT_OK || result.getData() == null) {
+            call.resolve(makePathsResult(null));
+            return;
+        }
+        Uri uri = result.getData().getData();
+        if (uri == null) {
+            call.resolve(makePathsResult(null));
+            return;
+        }
+        try {
+            String path = copyUriToCache(uri);
+            if (path != null) {
+                JSArray paths = new JSArray();
+                paths.put(path);
+                call.resolve(makePathsResult(paths));
+            } else {
+                call.resolve(makePathsResult(null));
+            }
+        } catch (IOException e) {
+            call.resolve(makePathsResult(null));
+        }
+    }
+
+    // =========================================================================
     // 10) getClipboardImage —— 读取剪贴板中的图片
     // =========================================================================
 

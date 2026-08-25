@@ -76,6 +76,10 @@
     openCamera: () =>
       appBridge.openCamera().then((r) => r && r.paths),
 
+    // 调用系统相机录制视频（durationLimit 秒）
+    openVideoCamera: (durationLimit) =>
+      appBridge.openVideoCamera({ durationLimit }).then((r) => r && r.paths),
+
     // 读取剪贴板中的图片
     getClipboardImage: () =>
       appBridge.getClipboardImage().then((r) => r && r.path),

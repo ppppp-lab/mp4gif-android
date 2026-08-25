@@ -1,0 +1,1 @@
+!function(){"use strict";const e=document.getElementById("btnOpenCamera");e&&e.addEventListener("click",async()=>{if(window.api&&window.api.openVideoCamera)try{const e=await window.api.openVideoCamera(60);e&&e[0]&&(location.href="converter.html?video="+encodeURIComponent(e[0]))}catch(e){location.href="converter.html"}else location.href="converter.html"})}();

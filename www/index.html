@@ -20,6 +20,15 @@
     <p class="brand-tip">做表情包需先将视频转成 GIF，再加工成表情包</p>
   </header>
 
+  <!-- 拍摄视频入口 -->
+  <button class="home-capture" id="btnOpenCamera">
+    <span class="capture-icon" aria-hidden="true"><span class="capture-lens"></span></span>
+    <span class="capture-text">
+      <strong>拍摄视频</strong>
+      <small>最长 60 秒 · 录完直接转 GIF</small>
+    </span>
+  </button>
+
   <!-- 双模式入口 -->
   <main class="home-modes">
 
@@ -56,5 +65,7 @@
   </footer>
 
 </div>
+<script src="android-bridge.js"></script>
+<script src="home.js"></script>
 </body>
 </html>

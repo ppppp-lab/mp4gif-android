@@ -144,6 +144,12 @@
     bindEvents();
     resetGaugeAndCmd();
 
+    // 从首页拍摄视频进入时自动加载视频
+    const autoVideo = new URLSearchParams(location.search).get('video');
+    if (autoVideo) {
+      await loadVideo(autoVideo);
+    }
+
     // 2. 后台运行性能校准（不阻塞启动，校准完成后自动刷新预估耗时）
     if (window.api.benchmark) {
       window.api.benchmark().then((benchSec) => {
