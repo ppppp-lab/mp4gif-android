@@ -114,8 +114,6 @@
     // 模糊笔刷底图像素缓存
     blurSourceData: null,
     blurSourceKey: '',
-    // 去底色模式
-    magicWandMode: false,
     // 历史
     history: [],
     historyIndex: -1,
@@ -146,9 +144,7 @@
     btnShare: $('btnShare'),
     btnExport: $('btnExportMeme'),
     memeEmpty: $('memeEmpty'),
-    btnImportGif: $('btnImportGif'), btnImportImage: $('btnImportImage'),
-    btnCaptureCamera: $('btnCaptureCamera'), btnImportClipboard: $('btnImportClipboard'),
-    btnGoConverter: $('btnGoConverter'),
+    btnImportGif: $('btnImportGif'),
     canvasWrap: $('canvasWrap'), canvas: $('memeCanvas'),
     memeSource: $('memeSource'), sourceName: $('sourceName'), btnChangeSource: $('btnChangeSource'),
     // 侧边栏
@@ -158,22 +154,14 @@
     memePanel: $('memePanel'),
     memePanelTitle: $('memePanelTitle'),
     memePanelClose: $('memePanelClose'),
-    // 模板
-    tplHint: $('tplHint'),
     // 滤镜
     brightnessRange: $('brightnessRange'), brightnessVal: $('brightnessVal'),
     contrastRange: $('contrastRange'), contrastVal: $('contrastVal'),
     saturateRange: $('saturateRange'), saturateVal: $('saturateVal'),
-    // 图层
-    layerList: $('layerList'),
     // 裁剪
     btnApplyCrop: $('btnApplyCrop'), btnResetCrop: $('btnResetCrop'),
     // 平台工具
     btnAddWhiteBorder: $('btnAddWhiteBorder'), btnAddRoundCorner: $('btnAddRoundCorner'),
-    btnMagicWand: $('btnMagicWand'),
-    btnSpliceH: $('btnSpliceH'), btnSpliceV: $('btnSpliceV'),
-    targetSizeInput: $('targetSizeInput'), btnCompressTarget: $('btnCompressTarget'),
-    btnSavePreset: $('btnSavePreset'), btnLoadPreset: $('btnLoadPreset'), presetList: $('presetList'),
     // 文字全屏编辑
     textFullscreen: $('textFullscreen'),
     textFsBack: $('textFsBack'), textFsDone: $('textFsDone'),
@@ -310,8 +298,6 @@
     trackRelativeOffsetY: 0,  // 相对位置偏移Y
     trackPointSet: false,     // 是否已设置追踪点（相对模式下）
     // 新增：录制系统
-    recording: false,        // 是否正在录制中
-    recordLayerId: null,     // 录制目标图层
   };
   const advFsCtx = $('advFsCanvas').getContext('2d');
   const advFsTlCtx = $('advFsTimelineCanvas').getContext('2d');
@@ -925,30 +911,6 @@
     }, 30);
   }
 
-  // ========== 高级剪辑：录制模式系统 ==========
-
-  function startRecording() {
-    if (!adv.layers.find(l => l.id === adv.selectedLayerId)) {
-    showToast(t('meme.track.needLayer'), 'warn');
-      return;
-    }
-    adv.recording = true;
-    adv.recordLayerId = adv.selectedLayerId;
-    saveUndoState();
-    // 开始播放
-    if (!adv.playing) advancedPlayToggle();
-  }
-
-  function stopRecording() {
-    adv.recording = false;
-    adv.recordLayerId = null;
-    if (adv.playing) advancedPlayToggle();
-    showToast(t('meme.record.done'), 'info');
-    syncAdvancedSliders();
-    renderAdvancedFs();
-    renderAdvancedTimeline();
-  }
-
   function renderAdvLayerStrip() {
     if (!dom.advLayerStrip) return;
     const strip = dom.advLayerStrip;
@@ -1036,7 +998,6 @@
     bindEvents();
     bindAdvancedFsEvents();
     updateDrawUI();
-    renderPresetList();
     const params = new URLSearchParams(location.search);
     const gifPath = params.get('gif');
     const sharedPath = params.get('shared');
@@ -1068,12 +1029,8 @@
   function bindEvents() {
     dom.btnBack.onclick = () => location.href = 'index.html';
     dom.btnImportGif.onclick = importSource;
-    if (dom.btnImportImage) dom.btnImportImage.onclick = importImage;
-    if (dom.btnCaptureCamera) dom.btnCaptureCamera.onclick = captureFromCamera;
-    if (dom.btnImportClipboard) dom.btnImportClipboard.onclick = importFromClipboard;
     dom.btnChangeSource.onclick = importSource;
     // 侧边栏底部按钮
-    if (dom.btnGoConverter) dom.btnGoConverter.onclick = () => location.href = 'index.html';
     dom.btnExport.onclick = exportMeme;
     dom.btnShare.onclick = shareMeme;
     dom.btnUndo.onclick = undo;
@@ -1081,7 +1038,7 @@
 
     // ========== 侧边栏图标点击 ==========
     const TOOL_NAMES = {
-      template: t('meme.panel.template'), text: t('meme.tool.text'), filter: t('meme.tool.filter'),
+      text: t('meme.tool.text'), filter: t('meme.tool.filter'),
       draw: t('meme.tool.draw'), crop: t('meme.tool.crop'), platform: t('meme.tool.platform')
     };
     let currentTool = 'text';
@@ -1128,7 +1085,6 @@
         openPanel();
         // 退出画笔/魔棒模式
         if (state.drawMode) { state.drawMode = false; dom.canvas.classList.remove('drawing'); }
-        if (state.magicWandMode) { state.magicWandMode = false; dom.canvas.classList.remove('magic-wand'); }
         render();
       };
     });
@@ -1335,15 +1291,6 @@
 
     // ========== 其他面板事件（保留不变） ==========
 
-    // 模板
-    document.querySelectorAll('.tpl-item').forEach(item => {
-      item.onclick = () => {
-        document.querySelectorAll('.tpl-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        applyTemplate(item.dataset.tpl);
-      };
-    });
-
     // 滤镜预设
     document.querySelectorAll('.filter-preset').forEach(preset => {
       preset.onclick = () => {
@@ -1417,55 +1364,6 @@
   // ============================================================
   // 模块：图片导入
   // ============================================================
-  // ========== 素材导入增强 ==========
-
-  // 相机拍摄导入
-  async function captureFromCamera() {
-    try {
-      if (!window.api || !window.api.openCamera) {
-        showToast(t('meme.camera.unavailable'), 'error');
-        return;
-      }
-      const paths = await window.api.openCamera();
-      if (paths && paths.length > 0) await loadSource(paths[0]);
-    } catch (e) {
-      showToast(t('meme.camera.fail', { error: e.message || e }), 'error');
-    }
-  }
-
-  // 多格式图片导入
-  async function importImage() {
-    try {
-      if (!window.api || !window.api.openImageDialog) {
-        showToast(t('meme.image.unavailable'), 'error');
-        return;
-      }
-      const paths = await window.api.openImageDialog();
-      if (paths && paths.length > 0) await loadSource(paths[0]);
-    } catch (e) {
-      showToast(t('meme.image.importFail', { error: e.message || e }), 'error');
-    }
-  }
-
-  // 剪贴板导入
-  async function importFromClipboard() {
-    try {
-      if (!window.api || !window.api.getClipboardImage) {
-        showToast(t('meme.clipboard.unavailable'), 'error');
-        return;
-      }
-      const path = await window.api.getClipboardImage();
-      if (path) {
-        await loadSource(path);
-        showToast(t('meme.clipboard.imported'), 'info');
-      } else {
-        showToast(t('meme.clipboard.empty'), 'warn');
-      }
-    } catch (e) {
-      showToast(t('meme.clipboard.fail', { error: e.message || e }), 'error');
-    }
-  }
-
   // ========== 导入素材（GIF / 图片优先，也支持视频） ==========
   async function importSource() {
     try {
@@ -1740,8 +1638,6 @@
     state.advLayers = []; state.advOverlay = null; state.advCanvasW = 0; state.advCanvasH = 0; state.advDuration = 0; state.gifCurrentTime = 0;
     state.filter = { preset: 'none', brightness: FILTER_DEFAULT, contrast: FILTER_DEFAULT, saturate: FILTER_DEFAULT };
     state.history = []; state.historyIndex = -1;
-    state.magicWandMode = false;
-    dom.canvas.classList.remove('magic-wand');
     // 清除模糊缓存
     state.blurSourceData = null; state.blurSourceKey = '';
 
@@ -2152,7 +2048,7 @@
     }
 
     // 选中标记
-    if (state.selectedId !== null && !state.drawMode && !state.magicWandMode) {
+    if (state.selectedId !== null && !state.drawMode) {
       const layer = state.layers.find(l => l.id === state.selectedId);
       if (layer) drawSelectionBox(layer);
     }
@@ -3342,47 +3238,6 @@
     ctx.restore();
   }
 
-  // ========== 模板 ==========
-  function applyTemplate(tpl) {
-    const w = state.canvasWidth, h = state.canvasHeight;
-    const hints = {
-      blank: t('meme.tpl.hint.blank'),
-      classic: t('meme.tpl.hint.classic'),
-      top: t('meme.tpl.hint.top'),
-      bottom: t('meme.tpl.hint.bottom'),
-      'white-box': t('meme.tpl.hint.whiteBox'),
-      'black-bar': t('meme.tpl.hint.blackBar'),
-    };
-    dom.tplHint.textContent = hints[tpl] || '';
-
-    if (tpl === 'blank') { render(); return; }
-
-    if (tpl === 'classic') {
-      state.layers = state.layers.filter(l => !l._tpl);
-      const top = makeText(t('meme.tpl.top'), w / 2, 30, { _tpl: true, font: 'impact', stroke: 4, size: 28 });
-      const bottom = makeText(t('meme.tpl.bottom'), w / 2, h - 30, { _tpl: true, font: 'impact', stroke: 4, size: 28 });
-      state.layers.push(top, bottom);
-      state.selectedId = top.id;
-    } else if (tpl === 'top') {
-      const top = makeText(t('meme.tpl.top'), w / 2, 30, { font: 'impact', stroke: 4, size: 28 });
-      state.layers.push(top);
-      state.selectedId = top.id;
-    } else if (tpl === 'bottom') {
-      const bottom = makeText(t('meme.tpl.bottom'), w / 2, h - 30, { font: 'impact', stroke: 4, size: 28 });
-      state.layers.push(bottom);
-      state.selectedId = bottom.id;
-    } else if (tpl === 'white-box') {
-      state.border = { style: 'white', width: 12 };
-    } else if (tpl === 'black-bar') {
-      const bar = makeText(t('meme.text.default'), w / 2, h / 2, { color: '#FFD93D', stroke: 0, size: 36, _tpl: true });
-      state.layers.push(bar);
-      state.selectedId = bar.id;
-    }
-
-    renderTextList(); renderLayerList(); render();
-    pushHistory();
-  }
-
   function getLayerBox(l) {
     if (l.type === 'text') return { w: l.size * 3, h: l.size * 2 };
     if (l.type === 'draw') return { w: l.width || l.size, h: l.height || l.size };
@@ -3401,49 +3256,6 @@
 
   function getSelected() {
     return state.layers.find(l => l.id === state.selectedId);
-  }
-
-  function renderTextList() {
-    // 文字列表已移至全屏编辑，此处保留为空函数以兼容
-  }
-
-  // ========== 图层管理 ==========
-  function renderLayerList() {
-    if (!dom.layerList) return;
-    dom.layerList.innerHTML = '';
-    if (state.layers.length === 0) {
-      dom.layerList.innerHTML = '<div class="layer-empty">' + t('meme.layer.empty') + '</div>';
-      return;
-    }
-    [...state.layers].reverse().forEach((l, idx) => {
-      const realIdx = state.layers.length - 1 - idx;
-      const item = document.createElement('div');
-      item.className = 'layer-item' + (l.id === state.selectedId ? ' active' : '');
-      const icon = l.type === 'text' ? t('meme.layer.textIcon') : l.type === 'draw' ? '✎' : t('meme.layer.textIcon');
-      const name = l.type === 'text' ? (l.text.replace(/\n/g, ' ').slice(0, 15) || t('meme.layer.textEmptyName')) : l.type === 'draw' ? t('meme.layer.drawName') : t('meme.layer.genericName');
-      item.innerHTML = `
-        <div class="layer-icon">${escapeHtml(icon)}</div>
-        <span class="layer-name">${escapeHtml(name)}</span>
-        <div class="layer-actions">
-          <button class="layer-btn" data-act="up" title="${t('meme.layer.moveUp')}">↑</button>
-          <button class="layer-btn" data-act="down" title="${t('meme.layer.moveDown')}">↓</button>
-          <button class="layer-btn" data-act="flip" title="${t('meme.layer.flip')}">⇄</button>
-          <button class="layer-btn" data-act="dup" title="${t('meme.layer.dup')}">⎘</button>
-          <button class="layer-btn danger" data-act="del" title="${t('meme.layer.del')}">✕</button>
-        </div>
-      `;
-      item.onclick = (e) => {
-        const btn = e.target.closest('.layer-btn');
-        if (btn) {
-          e.stopPropagation();
-          handleLayerAction(btn.dataset.act, realIdx);
-        } else {
-          state.selectedId = l.id;
-          renderTextList(); renderLayerList(); render();
-        }
-      };
-      dom.layerList.appendChild(item);
-    });
   }
 
   function handleLayerAction(act, idx) {
@@ -3473,7 +3285,7 @@
       state.layers.splice(idx, 1);
       if (state.selectedId === l.id) state.selectedId = null;
     }
-    renderTextList(); renderLayerList(); render();
+    render();
     pushHistory();
   }
 
@@ -3632,162 +3444,6 @@
     img.src = currentDataUrl;
   }
 
-  // Flood fill 算法：将相似颜色区域设为透明
-  function floodFillRemoveBg(startX, startY) {
-    const w = state.canvasWidth, h = state.canvasHeight;
-    // 先获取当前渲染的底图（含滤镜效果）
-    const oldSel = state.selectedId;
-    state.selectedId = null;
-    render();
-    const imgData = ctx.getImageData(0, 0, w, h);
-    state.selectedId = oldSel;
-
-    const data = imgData.data;
-    const sx = Math.round(startX), sy = Math.round(startY);
-    if (sx < 0 || sx >= w || sy < 0 || sy >= h) return;
-
-    // 获取起始点颜色
-    const startIdx = (sy * w + sx) * 4;
-    const startR = data[startIdx], startG = data[startIdx + 1];
-    const startB = data[startIdx + 2], startA = data[startIdx + 3];
-
-    // 容差
-    const tolerance = 30;
-
-    // BFS
-    const visited = new Uint8Array(w * h);
-    const queue = [sx + sy * w];
-    visited[sx + sy * w] = 1;
-
-    function colorMatch(idx) {
-      const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
-      return Math.abs(r - startR) <= tolerance &&
-             Math.abs(g - startG) <= tolerance &&
-             Math.abs(b - startB) <= tolerance &&
-             Math.abs(a - startA) <= tolerance;
-    }
-
-    while (queue.length > 0) {
-      const pos = queue.shift();
-      const px = pos % w, py = (pos - px) / w;
-      const idx = pos * 4;
-
-      // 设为透明
-      data[idx + 3] = 0;
-
-      // 四方向扩展
-      const neighbors = [
-        px > 0 ? pos - 1 : -1,
-        px < w - 1 ? pos + 1 : -1,
-        py > 0 ? pos - w : -1,
-        py < h - 1 ? pos + w : -1,
-      ];
-      for (let i = 0; i < 4; i++) {
-        const npos = neighbors[i];
-        if (npos >= 0 && !visited[npos]) {
-          visited[npos] = 1;
-          if (colorMatch(npos * 4)) {
-            queue.push(npos);
-          }
-        }
-      }
-    }
-
-    // 将处理后的图像设为新底图
-    const out = document.createElement('canvas');
-    out.width = w; out.height = h;
-    const octx = out.getContext('2d');
-    octx.putImageData(imgData, 0, 0);
-
-    const img = new Image();
-    img.onload = () => {
-      state.sourceImage = img;
-      state.blurSourceData = null; state.blurSourceKey = '';
-      state.mosaicCache = null; state.mosaicCacheKey = '';
-      render();
-      pushHistory();
-      showToast(t('meme.magic.removed'), 'info');
-    };
-    img.src = out.toDataURL('image/png');
-  }
-
-  // ========== 表情包拼接 ==========
-  async function spliceMeme(direction) {
-    if (!state.sourceImage) {
-      showToast(t('meme.needSource'), 'warn');
-      return;
-    }
-    try {
-      // 选择第二张图
-      if (!window.api || !window.api.openImageDialog) {
-        showToast(t('meme.image.unavailable'), 'error');
-        return;
-      }
-      const paths = await window.api.openImageDialog();
-      if (!paths || paths.length === 0) return;
-
-      // 加载第二张图
-      const img2 = await loadImageAsync(paths[0]);
-      if (!img2) { showToast(t('meme.image.loadSecondFail'), 'error'); return; }
-
-      const w1 = state.canvasWidth, h1 = state.canvasHeight;
-      const w2 = img2.naturalWidth, h2 = img2.naturalHeight;
-
-      // 计算新画布尺寸
-      let newW, newH;
-      if (direction === 'horizontal') {
-        newW = w1 + w2; newH = Math.max(h1, h2);
-      } else {
-        newW = Math.max(w1, w2); newH = h1 + h2;
-      }
-
-      // 保存当前画布快照
-      const oldSel = state.selectedId;
-      state.selectedId = null;
-      render();
-      const snap1 = document.createElement('canvas');
-      snap1.width = w1; snap1.height = h1;
-      snap1.getContext('2d').drawImage(dom.canvas, 0, 0);
-      state.selectedId = oldSel;
-
-      // 创建拼接画布
-      const out = document.createElement('canvas');
-      out.width = newW; out.height = newH;
-      const octx = out.getContext('2d');
-
-      if (direction === 'horizontal') {
-        octx.drawImage(snap1, 0, Math.round((newH - h1) / 2));
-        octx.drawImage(img2, w1, Math.round((newH - h2) / 2), w2, h2);
-      } else {
-        octx.drawImage(snap1, Math.round((newW - w1) / 2), 0);
-        octx.drawImage(img2, Math.round((newW - w2) / 2), h1, w2, h2);
-      }
-
-      // 替换底图
-      const result = new Image();
-      result.onload = () => {
-        try {
-          state.sourceImage = result;
-          state.canvasWidth = newW; state.canvasHeight = newH;
-          dom.canvas.width = newW; dom.canvas.height = newH;
-          state.layers = []; state.drawPaths = []; state.selectedId = null;
-          state.filter = { preset: 'none', brightness: FILTER_DEFAULT, contrast: FILTER_DEFAULT, saturate: FILTER_DEFAULT };
-          state.border = { style: 'none', width: 8 };
-          state.blurSourceData = null; state.blurSourceKey = '';
-          state.mosaicCache = null; state.mosaicCacheKey = '';
-          render();
-          pushHistory();
-          showToast(direction === 'horizontal' ? t('meme.splice.horizontal') : t('meme.splice.vertical'), 'info');
-        } catch (e) {
-          showToast(t('meme.splice.applyFail', { error: e.message || e }), 'error');
-        }
-      };
-      result.src = out.toDataURL();
-    } catch (e) {
-      showToast(t('meme.splice.fail', { error: e.message || e }), 'error');
-    }
-  }
-
   // 加载图片辅助函数（复用 resolveImgSrc 统一路径解析）
   function loadImageAsync(path) {
     return new Promise(resolve => {
@@ -3795,166 +3451,6 @@
       img.onload = () => resolve(img);
       img.onerror = () => resolve(null);
       img.src = resolveImgSrc(path);
-    });
-  }
-
-  // ========== 目标体积精准压缩 ==========
-  async function compressToTargetSize() {
-    if (!state.sourceImage) return;
-    const targetMB = parseFloat(dom.targetSizeInput.value);
-    if (!targetMB || targetMB <= 0) {
-      showToast(t('meme.compress.invalid'), 'warn');
-      return;
-    }
-    const targetBytes = targetMB * 1024 * 1024;
-
-    const oldSel = state.selectedId;
-    state.selectedId = null;
-    render();
-
-    try {
-      // 二分法：通过缩放分辨率来控制体积
-      let scaleLow = 0.1, scaleHigh = 1.0;
-      let bestDataUrl = null;
-      let bestSize = Infinity;
-      let iterations = 0;
-      const maxIterations = 10;
-
-      while (iterations < maxIterations && scaleLow <= scaleHigh) {
-        const scale = (scaleLow + scaleHigh) / 2;
-        const tmpW = Math.max(1, Math.round(state.canvasWidth * scale));
-        const tmpH = Math.max(1, Math.round(state.canvasHeight * scale));
-
-        const tmp = document.createElement('canvas');
-        tmp.width = tmpW; tmp.height = tmpH;
-        const tctx = tmp.getContext('2d');
-        tctx.drawImage(dom.canvas, 0, 0, tmpW, tmpH);
-
-        const dataUrl = tmp.toDataURL('image/png');
-        const sizeBytes = Math.round((dataUrl.length - 'data:image/png;base64,'.length) * 3 / 4);
-
-        if (sizeBytes <= targetBytes) {
-          bestDataUrl = dataUrl;
-          bestSize = sizeBytes;
-          scaleLow = scale + 0.01;
-        } else {
-          scaleHigh = scale - 0.01;
-        }
-        iterations++;
-      }
-
-      if (bestDataUrl) {
-        // 使用压缩后的结果
-        const img = new Image();
-        img.onload = () => {
-          try {
-            state.sourceImage = img;
-            state.canvasWidth = img.naturalWidth; state.canvasHeight = img.naturalHeight;
-            dom.canvas.width = img.naturalWidth; dom.canvas.height = img.naturalHeight;
-            state.layers = []; state.drawPaths = []; state.selectedId = null;
-            state.blurSourceData = null; state.blurSourceKey = '';
-            state.mosaicCache = null; state.mosaicCacheKey = '';
-            render();
-            pushHistory();
-            showToast(t('meme.compress.done', { size: (bestSize / 1024 / 1024).toFixed(2) }), 'info');
-          } catch (e) {
-            showToast(t('meme.compress.applyFail', { error: e.message || e }), 'error');
-          }
-        };
-        img.src = bestDataUrl;
-      } else {
-        showToast(t('meme.compress.fail'), 'warn');
-      }
-    } catch (e) {
-      showToast(t('meme.compress.error', { error: e.message || e }), 'error');
-    }
-    state.selectedId = oldSel;
-    render();
-  }
-
-  // ========== 用户参数预设 ==========
-  function saveUserPreset() {
-    const name = t('meme.preset.name', { time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) });
-    const preset = {
-      name: name,
-      canvasWidth: state.canvasWidth,
-      canvasHeight: state.canvasHeight,
-      filter: JSON.parse(JSON.stringify(state.filter)),
-      border: JSON.parse(JSON.stringify(state.border)),
-      cropRatio: state.cropRatio,
-    };
-    const presets = getUserPresets();
-    presets.push(preset);
-    localStorage.setItem('meme_presets', JSON.stringify(presets));
-    renderPresetList();
-    showToast(t('meme.preset.saved'), 'info');
-  }
-
-  function getUserPresets() {
-    try {
-      const json = localStorage.getItem('meme_presets');
-      return json ? JSON.parse(json) : [];
-    } catch (e) { return []; }
-  }
-
-  function applyUserPreset(index) {
-    const presets = getUserPresets();
-    if (index < 0 || index >= presets.length) return;
-    const preset = presets[index];
-    state.canvasWidth = preset.canvasWidth;
-    state.canvasHeight = preset.canvasHeight;
-    dom.canvas.width = preset.canvasWidth;
-    dom.canvas.height = preset.canvasHeight;
-    state.filter = preset.filter;
-    state.border = preset.border;
-    state.cropRatio = preset.cropRatio || 'free';
-    state.blurSourceData = null; state.blurSourceKey = '';
-    state.mosaicCache = null; state.mosaicCacheKey = '';
-
-    // 更新滤镜 UI
-    document.querySelectorAll('.filter-preset').forEach(p => {
-      p.classList.toggle('active', p.dataset.preset === state.filter.preset);
-    });
-    dom.brightnessRange.value = state.filter.brightness;
-    dom.brightnessVal.textContent = state.filter.brightness;
-    dom.contrastRange.value = state.filter.contrast;
-    dom.contrastVal.textContent = state.filter.contrast;
-    dom.saturateRange.value = state.filter.saturate;
-    dom.saturateVal.textContent = state.filter.saturate;
-
-    render();
-    pushHistory();
-    showToast(t('meme.preset.appliedName', { name: preset.name }), 'info');
-  }
-
-  function deleteUserPreset(index) {
-    const presets = getUserPresets();
-    if (index >= 0 && index < presets.length) {
-      presets.splice(index, 1);
-      localStorage.setItem('meme_presets', JSON.stringify(presets));
-      renderPresetList();
-    }
-  }
-
-  function renderPresetList() {
-    if (!dom.presetList) return;
-    dom.presetList.innerHTML = '';
-    const presets = getUserPresets();
-    if (presets.length === 0) {
-      dom.presetList.innerHTML = '<div style="color:var(--text-dim);font-size:11px;text-align:center;padding:8px 0">' + t('meme.preset.empty') + '</div>';
-      return;
-    }
-    presets.forEach((preset, idx) => {
-      const item = document.createElement('div');
-      item.className = 'preset-item';
-      item.innerHTML = '<span class="preset-item-name">' + escapeHtml(preset.name) + ' (' + preset.canvasWidth + '×' + preset.canvasHeight + ')</span>' +
-                       '<button class="preset-item-del" data-idx="' + idx + '">✕</button>';
-      item.querySelector('.preset-item-name').onclick = () => applyUserPreset(idx);
-      item.querySelector('.preset-item-del').onclick = (e) => {
-        e.stopPropagation();
-        deleteUserPreset(idx);
-      };
-      dom.presetList.appendChild(item);
     });
   }
 
@@ -3991,13 +3487,6 @@
 
   function onTouchStart(e) {
     e.preventDefault();
-
-    // 去底色模式
-    if (state.magicWandMode) {
-      const pos = getCanvasPos(e);
-      floodFillRemoveBg(pos.x, pos.y);
-      return;
-    }
 
     if (state.drawMode) {
       // 画笔模式
@@ -4063,7 +3552,7 @@
         touch.origRotation = hit.rotation || 0;
         touch.startAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
         state.selectedId = hit.id;
-        renderTextList(); renderLayerList(); render();
+        render();
       }
       return;
     }
@@ -4075,10 +3564,10 @@
         touch.mode = 'drag'; touch.id = hit.id; touch.type = hit.type;
         touch.sx = pos.x; touch.sy = pos.y; touch.ox = hit.x; touch.oy = hit.y;
         state.selectedId = hit.id;
-        renderTextList(); renderLayerList(); render();
+        render();
       } else {
         state.selectedId = null;
-        renderTextList(); renderLayerList(); render();
+        render();
       }
     } else if (e.touches.length === 2 && touch.mode === 'drag') {
       const t1 = e.touches[0], t2 = e.touches[1];
@@ -4093,9 +3582,6 @@
 
   function onTouchMove(e) {
     e.preventDefault();
-
-    // 去底色模式不处理移动
-    if (state.magicWandMode) return;
 
     if (state.drawMode && touch.drawing && state.currentPath) {
       const pos = getCanvasPos(e);
@@ -4136,8 +3622,6 @@
   }
 
   function onTouchEnd(e) {
-    if (state.magicWandMode) return;
-
     if (state.drawMode && touch.drawing) {
       const donePath = state.currentPath;
       touch.drawing = false;
@@ -4149,7 +3633,6 @@
         if (layer) {
           state.layers.push(layer);
           state.selectedId = layer.id;
-          renderLayerList();
         }
       }
       pushHistory();
@@ -4259,14 +3742,14 @@
       const img = new Image();
       img.onload = () => {
         state.sourceImage = img;
-        renderTextList(); renderLayerList(); render();
+        render();
         updateUndoRedoButtons();
       };
       img.src = snapshot.sourceDataURL;
       return;
     }
 
-    renderTextList(); renderLayerList(); render();
+    render();
     updateUndoRedoButtons();
   }
 
@@ -4689,7 +4172,6 @@
     dom.textFullscreen.classList.add('hidden');
     dom.textFullscreen.style.display = 'none';
     // 更新文字列表和图层列表
-    renderLayerList();
     render();
     pushHistory();
   }
@@ -4833,11 +4315,6 @@
     // 关闭底部面板
     dom.memePanel.classList.remove('open');
     dom.memePanelOverlay.classList.remove('show');
-    // 退出魔棒模式
-    if (state.magicWandMode) {
-      state.magicWandMode = false;
-      dom.canvas.classList.remove('magic-wand');
-    }
     // 设置画布尺寸
     dom.drawFsCanvas.width = state.canvasWidth;
     dom.drawFsCanvas.height = state.canvasHeight;
@@ -4873,7 +4350,6 @@
     dom.drawFullscreen.style.display = 'none';
     state.drawMode = false;
     dom.canvas.classList.remove('drawing');
-    renderLayerList();
     render();
     pushHistory();
   }
