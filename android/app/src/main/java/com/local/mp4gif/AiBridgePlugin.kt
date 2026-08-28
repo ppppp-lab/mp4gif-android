@@ -3,6 +3,7 @@ package com.local.mp4gif
 import android.os.Handler
 import android.os.Looper
 import com.capllama.CapacitorLlama
+import com.capllama.PartialCompletionCallback
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -23,10 +24,12 @@ class AiBridgePlugin : Plugin() {
 
     @PluginMethod
     fun checkModel(call: PluginCall) {
-        val ret = JSObject()
-        ret.put("ready", downloader.isReady())
-        ret.put("version", AiConfig.MODEL_VERSION)
-        call.resolve(ret)
+        Thread {
+            val ret = JSObject()
+            ret.put("ready", downloader.isReady())
+            ret.put("version", AiConfig.MODEL_VERSION)
+            mainHandler.post { call.resolve(ret) }
+        }.start()
     }
 
     @PluginMethod
@@ -43,7 +46,7 @@ class AiBridgePlugin : Plugin() {
                 val ret = JSObject()
                 ret.put("ready", true)
                 mainHandler.post { call.resolve(ret) }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 mainHandler.post { call.reject(e.message ?: "模型下载失败") }
             }
         }.start()
@@ -106,7 +109,7 @@ class AiBridgePlugin : Plugin() {
                 inner.put("emit_partial_completion", false)
                 completionParams.put("params", inner)
 
-                val completionFuture = engine.completion(completionParams, null)
+                val completionFuture = engine.completion(completionParams, PartialCompletionCallback { })
                 val result = completionFuture.get(180, TimeUnit.SECONDS)
                     ?: throw IllegalStateException("AI 生成失败")
                 if (result.has("error")) {
@@ -134,7 +137,7 @@ class AiBridgePlugin : Plugin() {
                 ret.put("ok", true)
                 ret.put("calls", callsArray)
                 mainHandler.post { call.resolve(ret) }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 resolveUnavailable(call, e.message ?: "AI 生成失败")
             } finally {
                 if (llama != null) {
