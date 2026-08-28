@@ -115,7 +115,9 @@ object SafetyValidator {
     private val whitelist: Map<String, Map<String, ParamRule>> = mapOf(
         "open_page" to mapOf("page" to stringEnum("meme")),
         "import_source" to emptyMap(),
+        "go_back" to emptyMap(),
         "open_text_editor" to emptyMap(),
+        "close_text_editor" to emptyMap(),
         "add_text" to mapOf("text" to stringPattern(Regex("^.{1,100}$"))),
         "set_text_font" to mapOf("font" to stringEnum("heavy", "impact", "song", "kai", "mono")),
         "set_text_color" to mapOf("color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"))),
@@ -124,13 +126,87 @@ object SafetyValidator {
         "set_text_rotation" to mapOf("rotation_degrees" to intRule(-180, 180)),
         "set_text_shadow" to mapOf("enabled" to boolRule()),
         "open_draw_editor" to emptyMap(),
+        "close_draw_editor" to emptyMap(),
         "set_draw_mode" to mapOf("mode" to stringEnum("pen", "eraser", "blur", "mosaic")),
         "set_draw_shape" to mapOf("shape" to stringEnum("free", "line", "arrow", "rect", "ellipse")),
         "set_draw_color" to mapOf("color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"))),
         "set_draw_brush_width" to mapOf("width" to intRule(1, 20)),
         "set_mosaic_size" to mapOf("size" to intRule(4, 30)),
         "clear_draw" to emptyMap(),
-        "set_tool" to mapOf("tool" to stringEnum("text", "filter", "draw", "crop", "platform", "advanced")),
+        "draw_line" to mapOf(
+            "x1" to intRule(0, 8192),
+            "y1" to intRule(0, 8192),
+            "x2" to intRule(0, 8192),
+            "y2" to intRule(0, 8192),
+            "color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"), required = false),
+            "stroke_width" to intRule(1, 40, required = false)
+        ),
+        "draw_arrow" to mapOf(
+            "x1" to intRule(0, 8192),
+            "y1" to intRule(0, 8192),
+            "x2" to intRule(0, 8192),
+            "y2" to intRule(0, 8192),
+            "color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"), required = false),
+            "stroke_width" to intRule(1, 40, required = false)
+        ),
+        "draw_rect" to mapOf(
+            "x" to intRule(0, 8192),
+            "y" to intRule(0, 8192),
+            "width" to intRule(1, 8192),
+            "height" to intRule(1, 8192),
+            "color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"), required = false),
+            "stroke_width" to intRule(1, 40, required = false)
+        ),
+        "draw_ellipse" to mapOf(
+            "x" to intRule(0, 8192),
+            "y" to intRule(0, 8192),
+            "width" to intRule(1, 8192),
+            "height" to intRule(1, 8192),
+            "color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"), required = false),
+            "stroke_width" to intRule(1, 40, required = false)
+        ),
+        "draw_freehand" to mapOf(
+            "points" to stringPattern(Regex("^[0-9]+,[0-9]+(;[0-9]+,[0-9]+)*$")),
+            "color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"), required = false),
+            "stroke_width" to intRule(1, 40, required = false)
+        ),
+        "erase_area" to mapOf(
+            "x1" to intRule(0, 8192),
+            "y1" to intRule(0, 8192),
+            "x2" to intRule(0, 8192),
+            "y2" to intRule(0, 8192),
+            "width" to intRule(1, 100, required = false)
+        ),
+        "blur_area" to mapOf(
+            "x1" to intRule(0, 8192),
+            "y1" to intRule(0, 8192),
+            "x2" to intRule(0, 8192),
+            "y2" to intRule(0, 8192),
+            "radius" to intRule(2, 50, required = false)
+        ),
+        "mosaic_area" to mapOf(
+            "x1" to intRule(0, 8192),
+            "y1" to intRule(0, 8192),
+            "x2" to intRule(0, 8192),
+            "y2" to intRule(0, 8192),
+            "size" to intRule(4, 30, required = false)
+        ),
+        "select_layer" to mapOf("index" to intRule(0, 999)),
+        "move_layer" to mapOf(
+            "x" to intRule(0, 8192),
+            "y" to intRule(0, 8192)
+        ),
+        "move_layer_by" to mapOf(
+            "dx" to intRule(-4096, 4096),
+            "dy" to intRule(-4096, 4096)
+        ),
+        "scale_layer" to mapOf("scale_percent" to intRule(10, 500)),
+        "rotate_layer" to mapOf("rotation_degrees" to intRule(-180, 180)),
+        "move_layer_up" to emptyMap(),
+        "move_layer_down" to emptyMap(),
+        "duplicate_layer" to emptyMap(),
+        "flip_layer" to emptyMap(),
+        "set_tool" to mapOf("tool" to stringEnum("text", "filter", "draw", "crop", "platform")),
         "apply_filter" to mapOf(
             "preset" to stringEnum("none", "gray", "sepia", "cold", "warm", "invert"),
             "brightness" to intRule(0, 200, required = false),
@@ -141,26 +217,20 @@ object SafetyValidator {
         "set_contrast" to mapOf("value" to intRule(0, 200)),
         "set_saturation" to mapOf("value" to intRule(0, 200)),
         "open_crop_editor" to emptyMap(),
+        "close_crop_editor" to emptyMap(),
         "set_crop_ratio" to mapOf("ratio" to stringEnum("free", "square", "wide", "portrait")),
+        "set_crop_rect" to mapOf(
+            "x" to intRule(0, 8192),
+            "y" to intRule(0, 8192),
+            "width" to intRule(1, 8192),
+            "height" to intRule(1, 8192)
+        ),
         "apply_crop" to emptyMap(),
         "reset_crop" to emptyMap(),
         "apply_platform_preset" to mapOf("platform" to stringEnum("wechat", "qq", "xiaohongshu", "douyin")),
         "add_white_border" to emptyMap(),
         "add_round_corner" to emptyMap(),
-        "open_advanced_editor" to emptyMap(),
-        "add_advanced_image" to emptyMap(),
-        "set_advanced_position" to mapOf(
-            "x" to intRule(0, 480),
-            "y" to intRule(0, 480)
-        ),
-        "set_advanced_scale" to mapOf("scale_percent" to intRule(10, 500)),
-        "set_advanced_rotation" to mapOf("rotation_degrees" to intRule(-180, 180)),
-        "set_tracking_precision" to mapOf("precision" to intRule(1, 10)),
-        "set_tracking_relative" to mapOf("relative" to boolRule()),
-        "start_tracking" to emptyMap(),
-        "add_position_keyframe" to mapOf("time_seconds" to floatRule(0.0, 86400.0, required = false)),
-        "add_scale_keyframe" to mapOf("time_seconds" to floatRule(0.0, 86400.0, required = false)),
-        "add_rotation_keyframe" to mapOf("time_seconds" to floatRule(0.0, 86400.0, required = false)),
+        "close_tool_panel" to emptyMap(),
         "delete_selected_layer" to emptyMap(),
         "undo" to emptyMap(),
         "redo" to emptyMap(),

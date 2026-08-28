@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Generate a 960-line Chinese instruction -> JSON function call SFT dataset."""
+"""Generate a 3000-line Chinese instruction -> JSON function call SFT dataset."""
 
 import json
 import random
 import re
 
 
-TARGET = 960
+TARGET = 3000
 MIN_METHOD_COUNT = 6
 
 

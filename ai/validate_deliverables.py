@@ -19,8 +19,8 @@ base = Path(__file__).parent
 generator = load_module("generator", base / "generate_dataset.py")
 
 rows = [json.loads(line) for line in (base / "ai_training_data.jsonl").read_text(encoding="utf-8").splitlines()]
-assert len(rows) == 960, f"row count {len(rows)}"
-assert len({r["instruction"] for r in rows}) == 960, "duplicate instructions"
+assert len(rows) == 3000, f"row count {len(rows)}"
+assert len({r["instruction"] for r in rows}) == 3000, "duplicate instructions"
 
 counts = Counter()
 bad = []

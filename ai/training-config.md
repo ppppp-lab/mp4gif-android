@@ -25,7 +25,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu128
 
 ## 3. 数据集
 
-`ai_training_data.jsonl` 共 960 条，格式：
+`ai_training_data.jsonl` 共 3000 条，格式：
 
 ```json
 {"instruction":"做个表情包，加文字哈哈，然后导出","output":"[{\"method\":\"open_page\",\"params\":{\"page\":\"meme\"}},{\"method\":\"open_text_editor\",\"params\":{}},{\"method\":\"add_text\",\"params\":{\"text\":\"哈哈\"}},{\"method\":\"export_meme\",\"params\":{}}]"}
@@ -47,7 +47,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cu128
 }
 ```
 
-切分建议：`val_size: 0.1`，即 864 条训练、96 条测试。测试集只用于训练后评估，不混入训练。
+切分建议：`val_size: 0.1`，即 2700 条训练、300 条测试。测试集只用于训练后评估，不混入训练。
 
 ## 4. LoRA 训练参数
 
@@ -72,7 +72,7 @@ llamafactory-cli train lora_train.yaml
 
 训练完成后，用测试集评估正确率：
 
-1. 对 96 条测试指令逐条生成函数调用。
+1. 对 300 条测试指令逐条生成函数调用。
 2. 与标注输出比较 method 序列。
 3. 再比较每个 method 的参数。
 4. 记录 `method 准确率` 和 `完整 JSON 准确率`。
