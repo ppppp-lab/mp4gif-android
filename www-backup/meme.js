@@ -5108,6 +5108,22 @@
       points: [{ x: params.x - w / 2, y: params.y - h / 2 }, { x: params.x + w / 2, y: params.y + h / 2 }],
     });
   };
+  MemeApi.draw_freehand = (params) => {
+    const points = String(params.points || '')
+      .split(';')
+      .map(pair => {
+        const [x, y] = pair.split(',').map(Number);
+        return { x, y };
+      })
+      .filter(pt => Number.isFinite(pt.x) && Number.isFinite(pt.y));
+    if (points.length < 2) return;
+    aiAddDrawPath({
+      type: 'pen', shape: 'free',
+      color: (params.color || state.drawColor).toUpperCase(),
+      width: params.stroke_width || state.brushWidth,
+      points,
+    });
+  };
   MemeApi.erase_area = (params) => {
     if (!state.sourceImage) return;
     state.drawPaths.push({

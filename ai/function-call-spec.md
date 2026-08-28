@@ -70,6 +70,7 @@ AI 只开放表情包工坊控制，不开放高级编辑器、MP4 转 GIF、首
 | `draw_arrow` | `x1,y1,x2,y2: int`，`color?`，`stroke_width?` | 画一个箭头 |
 | `draw_rect` | `x,y,width,height: int`，`color?`，`stroke_width?` | 以中心 `x,y` 画矩形 |
 | `draw_ellipse` | `x,y,width,height: int`，`color?`，`stroke_width?` | 以中心 `x,y` 画椭圆 |
+| `draw_freehand` | `points: string`，`color?`，`stroke_width?` | 按坐标串画手绘轨迹，格式 `x,y;x,y;...` |
 | `erase_area` | `x1,y1,x2,y2: int`，`width?` | 擦除矩形区域内的涂鸦 |
 | `blur_area` | `x1,y1,x2,y2: int`，`radius?` | 模糊矩形区域 |
 | `mosaic_area` | `x1,y1,x2,y2: int`，`size?` | 给矩形区域打马赛克 |

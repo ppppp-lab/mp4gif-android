@@ -72,6 +72,11 @@ SPECS = {
         "color": str_spec(pattern=r"^#[0-9A-Fa-f]{6}$", required=False),
         "stroke_width": int_spec(1, 40, required=False),
     },
+    "draw_freehand": {
+        "points": str_spec(pattern=r"^[0-9]+,[0-9]+(;[0-9]+,[0-9]+)*$"),
+        "color": str_spec(pattern=r"^#[0-9A-Fa-f]{6}$", required=False),
+        "stroke_width": int_spec(1, 40, required=False),
+    },
     "erase_area": {
         "x1": int_spec(0, 8192),
         "y1": int_spec(0, 8192),
@@ -224,6 +229,7 @@ PATTERNS = {
     "draw_arrow": ["从{x1},{y1}到{x2},{y2}画箭头", "画一个箭头", "加一个指向右边的箭头"],
     "draw_rect": ["在{x},{y}画一个{width}×{height}的矩形", "画个矩形", "加一个方框"],
     "draw_ellipse": ["在{x},{y}画一个椭圆", "画个圆圈", "加一个{width}×{height}的椭圆"],
+    "draw_freehand": ["随手画一条曲线", "画个手绘轨迹", "按照这几个点画一条线"],
     "erase_area": ["擦掉{x1},{y1}到{x2},{y2}这块", "把这块擦掉", "擦除中间区域"],
     "blur_area": ["把{x1},{y1}到{x2},{y2}模糊一下", "模糊这个区域", "把中间打码模糊"],
     "mosaic_area": ["把{x1},{y1}到{x2},{y2}打马赛克", "给这块加马赛克", "马赛克处理这个区域"],
@@ -310,6 +316,10 @@ VALUES = {
     "draw_ellipse": [
         {"x": 240, "y": 240, "width": 240, "height": 160},
         {"x": 240, "y": 240, "width": 300, "height": 200, "color": "#00C2FF"},
+    ],
+    "draw_freehand": [
+        {"points": "80,240;160,200;240,260;320,200;400,240"},
+        {"points": "80,80;160,160;240,120;320,200;400,160", "color": "#FFD93D", "stroke_width": 6},
     ],
     "erase_area": [
         {"x1": 160, "y1": 160, "x2": 320, "y2": 320},

@@ -90,6 +90,11 @@ object AiWhitelist {
             "color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"), required = false),
             "stroke_width" to intRule(1, 40, required = false),
         ),
+        "draw_freehand" to mapOf(
+            "points" to stringPattern(Regex("^[0-9]+,[0-9]+(;[0-9]+,[0-9]+)*$")),
+            "color" to stringPattern(Regex("^#[0-9A-Fa-f]{6}$"), required = false),
+            "stroke_width" to intRule(1, 40, required = false),
+        ),
         "erase_area" to mapOf(
             "x1" to intRule(0, 8192),
             "y1" to intRule(0, 8192),
