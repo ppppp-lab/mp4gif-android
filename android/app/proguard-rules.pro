@@ -33,6 +33,10 @@
 # --- 所有 native 方法 ---
 -keepclasseswithmembernames class * { native <methods>; }
 
+# --- llama.cpp Capacitor binding (JNI names must stay unrenamed) ---
+-keep class com.capllama.** { *; }
+-dontwarn com.capllama.**
+
 # --- WebView JavaScript 接口 ---
 -keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }
 

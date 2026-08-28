@@ -7,6 +7,7 @@
   <title data-i18n-doc-title="meme.title">表情包工坊</title>
   <link rel="stylesheet" href="styles.css?v=20260731b" />
   <link rel="stylesheet" href="meme.css" />
+  <link rel="stylesheet" href="ai-assistant.css" />
   <link rel="stylesheet" href="privacy-consent.css" />
 </head>
 <body>
@@ -84,6 +85,21 @@
       </div>
 
     </main>
+  </div>
+
+  <!-- ============ AI 助手 ============ -->
+  <button class="ai-fab hidden" id="aiFab" data-i18n-title="ai.open" title="AI">AI</button>
+  <div class="ai-panel hidden" id="aiPanel">
+    <div class="ai-panel-head">
+      <span class="ai-panel-title" data-i18n="ai.title">AI 助手</span>
+      <button class="ai-panel-close" id="aiPanelClose">×</button>
+    </div>
+    <div class="ai-status" id="aiStatus" data-i18n="ai.modelMissing">模型未就绪</div>
+    <textarea class="ai-input" id="aiInput" rows="2" data-i18n-placeholder="ai.placeholder" placeholder="告诉我你想怎么制作表情包"></textarea>
+    <div class="ai-actions">
+      <button class="ai-download hidden" id="aiDownload" data-i18n="ai.download">下载模型</button>
+      <button class="ai-send" id="aiSend" data-i18n="ai.send">生成</button>
+    </div>
   </div>
 
   <!-- ============ 底部弹出面板 ============ -->
@@ -446,5 +462,6 @@
 <script src="android-bridge.js"></script>
 <script src="gifuct.bundle.js"></script>
 <script src="meme.js?v=20260731h"></script>
+<script src="ai-assistant.js"></script>
 </body>
 </html>

@@ -1,0 +1,20 @@
+root ::= "[" ws call (ws "," ws call)* ws "]"
+
+call ::= "{" ws string ws ":" ws string ws "," ws string ws ":" ws object ws "}"
+
+value ::= object | array | string | number | "true" | "false" | "null"
+
+object ::= "{" ws (string ws ":" ws value (ws "," ws string ws ":" ws value)*)? ws "}"
+
+array ::= "[" ws (value (ws "," ws value)*)? ws "]"
+
+string ::= "\x22" string-char* "\x22"
+string-char ::= [^\x22\x5c] | "\x5c" escape
+escape ::= "\x22" | "\x5c" | "/" | "b" | "f" | "n" | "r" | "t" | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]
+
+number ::= "-"? int frac? exp?
+int ::= "0" | [1-9] [0-9]*
+frac ::= "." [0-9]+
+exp ::= ("e" | "E") ("+" | "-")? [0-9]+
+
+ws ::= [ \t\n\r]*

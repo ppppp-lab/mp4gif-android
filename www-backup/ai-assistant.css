@@ -1,0 +1,123 @@
+/* AI assistant entry and input panel for the meme studio. */
+.ai-fab {
+  position: fixed;
+  right: 14px;
+  bottom: 16px;
+  z-index: 80;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0E2730, #102030);
+  color: #00E5FF;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 229, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ai-fab:active {
+  transform: scale(0.94);
+}
+
+.ai-panel {
+  position: fixed;
+  right: 10px;
+  bottom: 78px;
+  left: 10px;
+  z-index: 85;
+  background: rgba(14, 17, 23, 0.98);
+  border: 1px solid #283142;
+  border-radius: 8px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 46vh;
+}
+
+.ai-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ai-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #E8F6FF;
+}
+.ai-panel-close {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #2A3444;
+  border-radius: 4px;
+  background: transparent;
+  color: #8B98AD;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ai-status {
+  min-height: 18px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #7F93A9;
+  overflow-wrap: anywhere;
+}
+.ai-status.ready { color: #3DDC84; }
+.ai-status.error { color: #FF6B6B; }
+.ai-status.busy { color: #00E5FF; }
+
+.ai-input {
+  width: 100%;
+  min-height: 52px;
+  max-height: 120px;
+  box-sizing: border-box;
+  resize: none;
+  border: 1px solid #2A3444;
+  border-radius: 6px;
+  background: #0A0D12;
+  color: #EDF5FF;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  outline: none;
+}
+.ai-input:focus { border-color: #00E5FF; }
+.ai-input:disabled { opacity: 0.55; }
+
+.ai-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ai-send,
+.ai-download {
+  min-height: 32px;
+  border-radius: 6px;
+  border: 1px solid #00E5FF;
+  background: #003A46;
+  color: #E9FBFF;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 14px;
+  cursor: pointer;
+}
+.ai-send:disabled,
+.ai-download:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ai-download {
+  border-color: #3DDC84;
+  background: rgba(61, 220, 132, 0.12);
+  color: #B8FFD9;
+}

@@ -29,6 +29,7 @@ public class MainActivity extends BridgeActivity {
         }
         registerPlugin(AppBridgePlugin.class);
         registerPlugin(GifskiPlugin.class);
+        registerPlugin(AiBridgePlugin.class);
         super.onCreate(savedInstanceState);
     }
 

@@ -147,6 +147,7 @@
     btnImportGif: $('btnImportGif'),
     canvasWrap: $('canvasWrap'), canvas: $('memeCanvas'),
     memeSource: $('memeSource'), sourceName: $('sourceName'), btnChangeSource: $('btnChangeSource'),
+    aiFab: $('aiFab'), aiPanel: $('aiPanel'),
     // 侧边栏
     memeSidebar: $('memeSidebar'),
     // 底部弹出面板
@@ -1365,18 +1366,37 @@
   // 模块：图片导入
   // ============================================================
   // ========== 导入素材（GIF / 图片优先，也支持视频） ==========
+  function updateAiFab() {
+    if (!dom.aiFab) return;
+    const hasSource = !!state.sourceImage;
+    dom.aiFab.classList.toggle('hidden', !hasSource);
+    if (!hasSource && dom.aiPanel) dom.aiPanel.classList.add('hidden');
+  }
+
   async function importSource() {
     try {
       // 表情包工坊主要用 GIF/图片，用 openImageDialog
       if (window.api && window.api.openImageDialog) {
         const paths = await window.api.openImageDialog();
-        if (paths && paths.length > 0) { await loadSource(paths[0]); return; }
+        if (paths && paths.length > 0) {
+          await loadSource(paths[0]);
+          updateAiFab();
+          return;
+        }
+        updateAiFab();
+        return;
       }
       // 降级：用 openVideoDialog
       const paths = await window.api.openVideoDialog(false);
-      if (paths && paths.length > 0) await loadSource(paths[0]);
+      if (paths && paths.length > 0) {
+        await loadSource(paths[0]);
+        updateAiFab();
+      } else {
+        updateAiFab();
+      }
     } catch (e) {
       showToast(t('meme.import.fail', { error: e.message || e }), 'error');
+      updateAiFab();
     }
   }
 
@@ -1629,6 +1649,7 @@
     dom.memeSource.style.display = 'flex';
     dom.memeSidebar.classList.remove('hidden');
     dom.memeSidebar.style.display = 'flex';
+    updateAiFab();
     if (dom.btnExport) dom.btnExport.disabled = false;
     dom.btnShare.disabled = false;
     dom.sourceName.textContent = state.sourceName;
@@ -4837,4 +4858,311 @@
   } else {
     init();
   }
+
+  // ============================================================
+  // AI 指令 -> 表情包工坊业务分发层
+  // ============================================================
+  const MemeApi = {};
+
+  function isTextFullscreenOpen() {
+    return dom.textFullscreen && dom.textFullscreen.style.display !== 'none';
+  }
+
+  function isDrawFullscreenOpen() {
+    return dom.drawFullscreen && dom.drawFullscreen.style.display !== 'none';
+  }
+
+  function isCropFullscreenOpen() {
+    return dom.cropFullscreen && dom.cropFullscreen.style.display !== 'none';
+  }
+
+  function isAdvancedFullscreenOpen() {
+    return dom.advancedFullscreen && dom.advancedFullscreen.style.display !== 'none';
+  }
+
+  function ensureTextLayer() {
+    if (!state.sourceImage) return null;
+    let layer = getSelected();
+    if (!layer || layer.type !== 'text') {
+      const first = state.layers.find(l => l.type === 'text');
+      if (first) {
+        layer = first;
+      } else {
+        layer = makeText(t('meme.text.default'), state.canvasWidth / 2, state.canvasHeight / 2);
+        state.layers.push(layer);
+      }
+      state.selectedId = layer.id;
+    }
+    return layer;
+  }
+
+  function refreshTextUi() {
+    const layer = getSelected();
+    if (isTextFullscreenOpen()) {
+      if (layer) fillTextFsControls(layer);
+      renderTextFsList();
+      renderTextFs();
+    }
+    render();
+  }
+
+  function syncFilterUi() {
+    const f = state.filter;
+    document.querySelectorAll('.filter-preset').forEach(el => {
+      el.classList.toggle('active', el.dataset.preset === f.preset);
+    });
+    if (dom.brightnessRange) { dom.brightnessRange.value = f.brightness; dom.brightnessVal.textContent = f.brightness; }
+    if (dom.contrastRange) { dom.contrastRange.value = f.contrast; dom.contrastVal.textContent = f.contrast; }
+    if (dom.saturateRange) { dom.saturateRange.value = f.saturate; dom.saturateVal.textContent = f.saturate; }
+  }
+
+  function openToolPanel(tool) {
+    document.querySelectorAll('.meme-sidebar-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.tool === tool);
+    });
+    document.querySelectorAll('.panel-section').forEach(p => {
+      p.classList.toggle('active', p.dataset.panel === tool);
+    });
+    const names = {
+      filter: t('meme.tool.filter'),
+      platform: t('meme.tool.platform'),
+    };
+    dom.memePanelTitle.textContent = names[tool] || tool;
+    dom.memePanel.classList.add('open');
+    dom.memePanelOverlay.classList.add('show');
+  }
+
+  function getAdvSelectedLayer() {
+    return adv.layers.find(l => l.id === adv.selectedLayerId) || null;
+  }
+
+  function setAdvTransform(type, value) {
+    const layer = getAdvSelectedLayer();
+    if (!layer) return;
+    saveUndoState();
+    const st = getAdvLayerState(layer, adv.currentTime);
+    if (type === 'pos') {
+      addAdvKeyframe(layer.id, 'pos', adv.currentTime, { t: adv.currentTime, x: value.x, y: value.y });
+    } else if (type === 'scale') {
+      addAdvKeyframe(layer.id, 'scale', adv.currentTime, { t: adv.currentTime, s: value / 100 });
+    } else if (type === 'rot') {
+      addAdvKeyframe(layer.id, 'rot', adv.currentTime, { t: adv.currentTime, r: value });
+    }
+    syncAdvancedSliders();
+    renderAdvancedFs();
+    renderAdvancedTimeline();
+  }
+
+  function addKeyframeOfType(type, timeSeconds) {
+    const layer = getAdvSelectedLayer();
+    if (!layer) return;
+    saveUndoState();
+    const time = typeof timeSeconds === 'number' ? timeSeconds : adv.currentTime;
+    const st = getAdvLayerState(layer, time);
+    if (type === 'pos') {
+      addAdvKeyframe(layer.id, 'pos', time, { t: time, x: st.x, y: st.y });
+    } else if (type === 'scale') {
+      addAdvKeyframe(layer.id, 'scale', time, { t: time, s: st.scale });
+    } else if (type === 'rot') {
+      addAdvKeyframe(layer.id, 'rot', time, { t: time, r: st.rotation });
+    }
+    if (typeof timeSeconds === 'number') {
+      adv.currentTime = Math.max(0, Math.min(adv.videoDuration || timeSeconds, timeSeconds));
+      updateAdvancedTimecode();
+    }
+    syncAdvancedSliders();
+    renderAdvancedFs();
+    renderAdvancedTimeline();
+  }
+
+  MemeApi.open_page = (params) => {
+    if (params.page !== 'meme') return;
+  };
+  MemeApi.import_source = () => importSource();
+
+  MemeApi.open_text_editor = () => openTextFs();
+  MemeApi.add_text = (params) => {
+    const layer = ensureTextLayer();
+    if (!layer) return;
+    layer.text = params.text || layer.text;
+    refreshTextUi();
+    pushHistory();
+  };
+  MemeApi.set_text_font = (params) => {
+    const layer = ensureTextLayer();
+    if (!layer) return;
+    layer.font = params.font;
+    refreshTextUi();
+    pushHistory();
+  };
+  MemeApi.set_text_color = (params) => {
+    const layer = ensureTextLayer();
+    if (!layer) return;
+    layer.color = params.color.toUpperCase();
+    refreshTextUi();
+    pushHistory();
+  };
+  MemeApi.set_text_size = (params) => {
+    const layer = ensureTextLayer();
+    if (!layer) return;
+    layer.size = params.size;
+    refreshTextUi();
+    pushHistory();
+  };
+  MemeApi.set_text_stroke = (params) => {
+    const layer = ensureTextLayer();
+    if (!layer) return;
+    layer.stroke = params.stroke;
+    refreshTextUi();
+    pushHistory();
+  };
+  MemeApi.set_text_rotation = (params) => {
+    const layer = ensureTextLayer();
+    if (!layer) return;
+    layer.rotation = params.rotation_degrees * Math.PI / 180;
+    refreshTextUi();
+    pushHistory();
+  };
+  MemeApi.set_text_shadow = (params) => {
+    const layer = ensureTextLayer();
+    if (!layer) return;
+    layer.shadow = !!params.enabled;
+    refreshTextUi();
+    pushHistory();
+  };
+
+  MemeApi.open_draw_editor = () => openDrawFs();
+  MemeApi.set_draw_mode = (params) => {
+    state.drawToolMode = params.mode;
+    if (isDrawFullscreenOpen()) updateDrawFsUI();
+  };
+  MemeApi.set_draw_shape = (params) => {
+    state.drawShape = params.shape;
+    if (isDrawFullscreenOpen()) updateDrawFsUI();
+  };
+  MemeApi.set_draw_color = (params) => {
+    state.drawColor = params.color.toUpperCase();
+  };
+  MemeApi.set_draw_brush_width = (params) => {
+    state.brushWidth = params.width;
+    if (dom.drawFsBrushRange) { dom.drawFsBrushRange.value = params.width; dom.drawFsBrushVal.textContent = params.width; }
+  };
+  MemeApi.set_mosaic_size = (params) => {
+    state.mosaicSize = params.size;
+    if (dom.drawFsMosaicRange) { dom.drawFsMosaicRange.value = params.size; dom.drawFsMosaicVal.textContent = params.size; }
+  };
+  MemeApi.clear_draw = () => {
+    state.drawPaths = [];
+    if (isDrawFullscreenOpen()) renderDrawFs();
+    render();
+    pushHistory();
+  };
+
+  MemeApi.set_tool = (params) => {
+    const tool = params.tool;
+    if (tool === 'text') { openTextFs(); return; }
+    if (tool === 'draw') { openDrawFs(); return; }
+    if (tool === 'crop') { openCropFs(); return; }
+    if (tool === 'advanced') { openAdvancedFs(); return; }
+    openToolPanel(tool);
+  };
+  MemeApi.apply_filter = (params) => {
+    const vals = FILTER_PRESET_VALUES[params.preset] || { preset: params.preset, brightness: 100, contrast: 100, saturate: 100 };
+    state.filter = {
+      preset: vals.preset || params.preset,
+      brightness: typeof params.brightness === 'number' ? params.brightness : vals.brightness,
+      contrast: typeof params.contrast === 'number' ? params.contrast : vals.contrast,
+      saturate: typeof params.saturation === 'number' ? params.saturation : vals.saturate,
+    };
+    syncFilterUi();
+    render();
+    pushHistory();
+  };
+  MemeApi.set_brightness = (params) => {
+    state.filter.brightness = params.value;
+    syncFilterUi();
+    render();
+    pushHistory();
+  };
+  MemeApi.set_contrast = (params) => {
+    state.filter.contrast = params.value;
+    syncFilterUi();
+    render();
+    pushHistory();
+  };
+  MemeApi.set_saturation = (params) => {
+    state.filter.saturate = params.value;
+    syncFilterUi();
+    render();
+    pushHistory();
+  };
+
+  MemeApi.open_crop_editor = () => openCropFs();
+  MemeApi.set_crop_ratio = (params) => {
+    if (isCropFullscreenOpen()) {
+      cropFs.ratio = params.ratio;
+      dom.cropFsChips.querySelectorAll('.crop-chip').forEach(c => {
+        c.classList.toggle('active', c.dataset.crop === params.ratio);
+      });
+      applyCropRatio();
+      renderCropFs();
+    } else {
+      state.cropRatio = params.ratio;
+      document.querySelectorAll('.crop-chip').forEach(c => {
+        c.classList.toggle('active', c.dataset.crop === params.ratio);
+      });
+    }
+  };
+  MemeApi.apply_crop = () => {
+    if (isCropFullscreenOpen()) applyCropFs();
+    else applyCrop();
+  };
+  MemeApi.reset_crop = () => {
+    if (isCropFullscreenOpen()) resetCropFs();
+    else resetCrop();
+  };
+  MemeApi.apply_platform_preset = (params) => applyPlatformPreset(params.platform);
+  MemeApi.add_white_border = () => addWhiteBorder();
+  MemeApi.add_round_corner = () => addRoundCorner();
+
+  MemeApi.open_advanced_editor = () => openAdvancedFs();
+  MemeApi.add_advanced_image = () => addAdvancedImage();
+  MemeApi.set_advanced_position = (params) => setAdvTransform('pos', { x: params.x, y: params.y });
+  MemeApi.set_advanced_scale = (params) => setAdvTransform('scale', params.scale_percent);
+  MemeApi.set_advanced_rotation = (params) => setAdvTransform('rot', params.rotation_degrees);
+  MemeApi.set_tracking_precision = (params) => {
+    adv.trackInterval = params.precision;
+    const input = document.getElementById('advTrackPrecision');
+    if (input) input.value = params.precision;
+  };
+  MemeApi.set_tracking_relative = (params) => {
+    adv.trackRelativeMode = !!params.relative;
+    const checkbox = document.getElementById('advTrackRelativeMode');
+    if (checkbox) checkbox.checked = !!params.relative;
+  };
+  MemeApi.start_tracking = () => runTracking();
+  MemeApi.add_position_keyframe = (params) => addKeyframeOfType('pos', params.time_seconds);
+  MemeApi.add_scale_keyframe = (params) => addKeyframeOfType('scale', params.time_seconds);
+  MemeApi.add_rotation_keyframe = (params) => addKeyframeOfType('rot', params.time_seconds);
+  MemeApi.delete_selected_layer = () => {
+    if (isAdvancedFullscreenOpen() && adv.selectedLayerId) {
+      removeAdvancedLayer(adv.selectedLayerId);
+      return;
+    }
+    if (state.selectedId !== null) {
+      state.layers = state.layers.filter(l => l.id !== state.selectedId);
+      state.selectedId = null;
+      render();
+      pushHistory();
+    }
+  };
+  MemeApi.undo = () => {
+    if (isAdvancedFullscreenOpen() && adv.undoStack.length > 0) undoAdvanced();
+    else undo();
+  };
+  MemeApi.redo = () => redo();
+  MemeApi.share_meme = () => shareMeme();
+  MemeApi.export_meme = () => exportMeme();
+
+  window.MemeApi = MemeApi;
 })();
