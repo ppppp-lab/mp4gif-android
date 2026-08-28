@@ -59,6 +59,30 @@ class AiWhitelistTest {
     }
 
     @Test
+    fun acceptsDrawLine() {
+        val raw = """[{"method":"draw_line","params":{"x1":0,"y1":240,"x2":480,"y2":240,"color":"#FF0000","stroke_width":4}}]"""
+        assertNotNull(AiWhitelist.parse(raw))
+    }
+
+    @Test
+    fun acceptsLayerMove() {
+        val raw = """[{"method":"select_layer","params":{"index":0}},{"method":"move_layer","params":{"x":240,"y":240}}]"""
+        assertNotNull(AiWhitelist.parse(raw))
+    }
+
+    @Test
+    fun rejectsAdvancedEditorMethod() {
+        val raw = """[{"method":"open_advanced_editor","params":{}}]"""
+        assertNull(AiWhitelist.parse(raw))
+    }
+
+    @Test
+    fun rejectsAdvancedTool() {
+        val raw = """[{"method":"set_tool","params":{"tool":"advanced"}}]"""
+        assertNull(AiWhitelist.parse(raw))
+    }
+
+    @Test
     fun rejectsNonArrayOutput() {
         assertNull(AiWhitelist.parse("""{"method":"undo","params":{}}"""))
     }

@@ -4975,6 +4975,22 @@
     renderAdvancedTimeline();
   }
 
+  function aiAddDrawPath(path) {
+    if (!state.sourceImage) return;
+    const layer = penPathToLayer(path);
+    if (!layer) return;
+    state.layers.push(layer);
+    state.selectedId = layer.id;
+    render();
+    pushHistory();
+  }
+
+  function refreshAiLayer() {
+    const layer = getSelected();
+    if (layer && layer.type === 'text') refreshTextUi();
+    else render();
+  }
+
   MemeApi.open_page = (params) => {
     if (params.page !== 'meme') return;
   };
@@ -5058,12 +5074,92 @@
     pushHistory();
   };
 
+  MemeApi.draw_line = (params) => {
+    aiAddDrawPath({
+      type: 'pen', shape: 'line',
+      color: (params.color || state.drawColor).toUpperCase(),
+      width: params.stroke_width || state.brushWidth,
+      points: [{ x: params.x1, y: params.y1 }, { x: params.x2, y: params.y2 }],
+    });
+  };
+  MemeApi.draw_arrow = (params) => {
+    aiAddDrawPath({
+      type: 'pen', shape: 'arrow',
+      color: (params.color || state.drawColor).toUpperCase(),
+      width: params.stroke_width || state.brushWidth,
+      points: [{ x: params.x1, y: params.y1 }, { x: params.x2, y: params.y2 }],
+    });
+  };
+  MemeApi.draw_rect = (params) => {
+    const w = params.width, h = params.height;
+    aiAddDrawPath({
+      type: 'pen', shape: 'rect',
+      color: (params.color || state.drawColor).toUpperCase(),
+      width: params.stroke_width || state.brushWidth,
+      points: [{ x: params.x - w / 2, y: params.y - h / 2 }, { x: params.x + w / 2, y: params.y + h / 2 }],
+    });
+  };
+  MemeApi.draw_ellipse = (params) => {
+    const w = params.width, h = params.height;
+    aiAddDrawPath({
+      type: 'pen', shape: 'ellipse',
+      color: (params.color || state.drawColor).toUpperCase(),
+      width: params.stroke_width || state.brushWidth,
+      points: [{ x: params.x - w / 2, y: params.y - h / 2 }, { x: params.x + w / 2, y: params.y + h / 2 }],
+    });
+  };
+  MemeApi.erase_area = (params) => {
+    if (!state.sourceImage) return;
+    state.drawPaths.push({
+      type: 'eraser',
+      width: params.width || state.brushWidth * 3,
+      points: [{ x: params.x1, y: params.y1 }, { x: params.x2, y: params.y2 }],
+    });
+    if (isDrawFullscreenOpen()) renderDrawFs();
+    render();
+    pushHistory();
+  };
+  MemeApi.blur_area = (params) => {
+    if (!state.sourceImage) return;
+    if (!isDrawFullscreenOpen()) openDrawFs();
+    const w = state.canvasWidth, h = state.canvasHeight;
+    const x1 = Math.max(0, Math.min(w, Math.min(params.x1, params.x2)));
+    const x2 = Math.max(0, Math.min(w, Math.max(params.x1, params.x2)));
+    const y1 = Math.max(0, Math.min(h, Math.min(params.y1, params.y2)));
+    const y2 = Math.max(0, Math.min(h, Math.max(params.y1, params.y2)));
+    const r = params.radius || 8;
+    for (let y = y1; y <= y2; y += r) {
+      for (let x = x1; x <= x2; x += r) {
+        applyBlurAtPointOnCtx(x, y, r, drawFsCtx);
+      }
+    }
+    renderDrawFs();
+  };
+  MemeApi.mosaic_area = (params) => {
+    if (!state.sourceImage) return;
+    const w = state.canvasWidth, h = state.canvasHeight;
+    const x1 = Math.max(0, Math.min(w, Math.min(params.x1, params.x2)));
+    const x2 = Math.max(0, Math.min(w, Math.max(params.x1, params.x2)));
+    const y1 = Math.max(0, Math.min(h, Math.min(params.y1, params.y2)));
+    const y2 = Math.max(0, Math.min(h, Math.max(params.y1, params.y2)));
+    const size = params.size || state.mosaicSize;
+    const points = [];
+    for (let y = y1; y <= y2; y += size) {
+      for (let x = x1; x <= x2; x += size) {
+        points.push({ x, y });
+      }
+    }
+    state.drawPaths.push({ type: 'mosaic', size, points });
+    if (isDrawFullscreenOpen()) renderDrawFs();
+    render();
+    pushHistory();
+  };
+
   MemeApi.set_tool = (params) => {
     const tool = params.tool;
     if (tool === 'text') { openTextFs(); return; }
     if (tool === 'draw') { openDrawFs(); return; }
     if (tool === 'crop') { openCropFs(); return; }
-    if (tool === 'advanced') { openAdvancedFs(); return; }
     openToolPanel(tool);
   };
   MemeApi.apply_filter = (params) => {
@@ -5113,6 +5209,20 @@
       });
     }
   };
+  MemeApi.set_crop_rect = (params) => {
+    if (!state.sourceImage) return;
+    if (!isCropFullscreenOpen()) openCropFs();
+    const w = state.canvasWidth, h = state.canvasHeight;
+    cropFs.x = Math.max(0, Math.min(w - 1, params.x));
+    cropFs.y = Math.max(0, Math.min(h - 1, params.y));
+    cropFs.w = Math.max(1, Math.min(w - cropFs.x, params.width));
+    cropFs.h = Math.max(1, Math.min(h - cropFs.y, params.height));
+    cropFs.ratio = 'free';
+    dom.cropFsChips.querySelectorAll('.crop-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.crop === 'free');
+    });
+    renderCropFs();
+  };
   MemeApi.apply_crop = () => {
     if (isCropFullscreenOpen()) applyCropFs();
     else applyCrop();
@@ -5125,30 +5235,65 @@
   MemeApi.add_white_border = () => addWhiteBorder();
   MemeApi.add_round_corner = () => addRoundCorner();
 
-  MemeApi.open_advanced_editor = () => openAdvancedFs();
-  MemeApi.add_advanced_image = () => addAdvancedImage();
-  MemeApi.set_advanced_position = (params) => setAdvTransform('pos', { x: params.x, y: params.y });
-  MemeApi.set_advanced_scale = (params) => setAdvTransform('scale', params.scale_percent);
-  MemeApi.set_advanced_rotation = (params) => setAdvTransform('rot', params.rotation_degrees);
-  MemeApi.set_tracking_precision = (params) => {
-    adv.trackInterval = params.precision;
-    const input = document.getElementById('advTrackPrecision');
-    if (input) input.value = params.precision;
+  MemeApi.select_layer = (params) => {
+    const layer = state.layers[params.index];
+    if (!layer) return;
+    state.selectedId = layer.id;
+    render();
   };
-  MemeApi.set_tracking_relative = (params) => {
-    adv.trackRelativeMode = !!params.relative;
-    const checkbox = document.getElementById('advTrackRelativeMode');
-    if (checkbox) checkbox.checked = !!params.relative;
+  MemeApi.move_layer = (params) => {
+    const layer = getSelected();
+    if (!layer) return;
+    layer.x = params.x;
+    layer.y = params.y;
+    refreshAiLayer();
+    pushHistory();
   };
-  MemeApi.start_tracking = () => runTracking();
-  MemeApi.add_position_keyframe = (params) => addKeyframeOfType('pos', params.time_seconds);
-  MemeApi.add_scale_keyframe = (params) => addKeyframeOfType('scale', params.time_seconds);
-  MemeApi.add_rotation_keyframe = (params) => addKeyframeOfType('rot', params.time_seconds);
-  MemeApi.delete_selected_layer = () => {
-    if (isAdvancedFullscreenOpen() && adv.selectedLayerId) {
-      removeAdvancedLayer(adv.selectedLayerId);
-      return;
+  MemeApi.move_layer_by = (params) => {
+    const layer = getSelected();
+    if (!layer) return;
+    layer.x += params.dx;
+    layer.y += params.dy;
+    refreshAiLayer();
+    pushHistory();
+  };
+  MemeApi.scale_layer = (params) => {
+    const layer = getSelected();
+    if (!layer) return;
+    const ratio = params.scale_percent / 100;
+    if (layer.type === 'text') {
+      layer.size = Math.max(12, Math.min(200, Math.round(layer.size * ratio)));
+    } else if (layer.type === 'draw') {
+      layer.width = Math.max(4, Math.round(layer.width * ratio));
+      layer.height = Math.max(4, Math.round(layer.height * ratio));
     }
+    refreshAiLayer();
+    pushHistory();
+  };
+  MemeApi.rotate_layer = (params) => {
+    const layer = getSelected();
+    if (!layer) return;
+    layer.rotation = params.rotation_degrees * Math.PI / 180;
+    refreshAiLayer();
+    pushHistory();
+  };
+  MemeApi.move_layer_up = () => {
+    const idx = state.layers.findIndex(l => l.id === state.selectedId);
+    if (idx >= 0) handleLayerAction('up', idx);
+  };
+  MemeApi.move_layer_down = () => {
+    const idx = state.layers.findIndex(l => l.id === state.selectedId);
+    if (idx >= 0) handleLayerAction('down', idx);
+  };
+  MemeApi.duplicate_layer = () => {
+    const idx = state.layers.findIndex(l => l.id === state.selectedId);
+    if (idx >= 0) handleLayerAction('dup', idx);
+  };
+  MemeApi.flip_layer = () => {
+    const idx = state.layers.findIndex(l => l.id === state.selectedId);
+    if (idx >= 0) handleLayerAction('flip', idx);
+  };
+  MemeApi.delete_selected_layer = () => {
     if (state.selectedId !== null) {
       state.layers = state.layers.filter(l => l.id !== state.selectedId);
       state.selectedId = null;
@@ -5156,10 +5301,7 @@
       pushHistory();
     }
   };
-  MemeApi.undo = () => {
-    if (isAdvancedFullscreenOpen() && adv.undoStack.length > 0) undoAdvanced();
-    else undo();
-  };
+  MemeApi.undo = () => undo();
   MemeApi.redo = () => redo();
   MemeApi.share_meme = () => shareMeme();
   MemeApi.export_meme = () => exportMeme();
