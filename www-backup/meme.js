@@ -4995,8 +4995,10 @@
     if (params.page !== 'meme') return;
   };
   MemeApi.import_source = () => importSource();
+  MemeApi.go_back = () => { location.href = 'index.html'; };
 
   MemeApi.open_text_editor = () => openTextFs();
+  MemeApi.close_text_editor = () => { if (isTextFullscreenOpen()) closeTextFs(); };
   MemeApi.add_text = (params) => {
     const layer = ensureTextLayer();
     if (!layer) return;
@@ -5048,6 +5050,7 @@
   };
 
   MemeApi.open_draw_editor = () => openDrawFs();
+  MemeApi.close_draw_editor = () => { if (isDrawFullscreenOpen()) closeDrawFs(); };
   MemeApi.set_draw_mode = (params) => {
     state.drawToolMode = params.mode;
     if (isDrawFullscreenOpen()) updateDrawFsUI();
@@ -5210,6 +5213,7 @@
   };
 
   MemeApi.open_crop_editor = () => openCropFs();
+  MemeApi.close_crop_editor = () => { if (isCropFullscreenOpen()) closeCropFs(); };
   MemeApi.set_crop_ratio = (params) => {
     if (isCropFullscreenOpen()) {
       cropFs.ratio = params.ratio;
@@ -5250,6 +5254,7 @@
   MemeApi.apply_platform_preset = (params) => applyPlatformPreset(params.platform);
   MemeApi.add_white_border = () => addWhiteBorder();
   MemeApi.add_round_corner = () => addRoundCorner();
+  MemeApi.close_tool_panel = () => closePanel();
 
   MemeApi.select_layer = (params) => {
     const layer = state.layers[params.index];

@@ -33,7 +33,7 @@
 
 ## 4. method 白名单
 
-AI 只开放表情包工坊控制，不开放高级编辑器、MP4 转 GIF、首页、相机和隐私政策页面。
+AI 开放表情包工坊控制及返回首页动作，不开放高级编辑器、MP4 转 GIF、相机和隐私政策页面。
 
 ### 4.1 入口与素材
 
@@ -41,12 +41,14 @@ AI 只开放表情包工坊控制，不开放高级编辑器、MP4 转 GIF、首
 |---|---|---|
 | `open_page` | `page: string` | 页面枚举，仅 `meme` |
 | `import_source` | 无 | 在表情包工坊导入 GIF 或图片素材 |
+| `go_back` | 无 | 返回首页 |
 
 ### 4.2 文字
 
 | method | 参数 | 说明 |
 |---|---|---|
 | `open_text_editor` | 无 | 打开文字编辑全屏页 |
+| `close_text_editor` | 无 | 关闭文字编辑全屏页 |
 | `add_text` | `text: string` | 文字内容，长度 `1..100` |
 | `set_text_font` | `font: string` | 枚举：`heavy`、`impact`、`song`、`kai`、`mono` |
 | `set_text_color` | `color: string` | 十六进制颜色，格式 `#RRGGBB` |
@@ -60,6 +62,7 @@ AI 只开放表情包工坊控制，不开放高级编辑器、MP4 转 GIF、首
 | method | 参数 | 说明 |
 |---|---|---|
 | `open_draw_editor` | 无 | 打开画笔编辑全屏页 |
+| `close_draw_editor` | 无 | 关闭画笔编辑全屏页 |
 | `set_draw_mode` | `mode: string` | 枚举：`pen`、`eraser`、`blur`、`mosaic` |
 | `set_draw_shape` | `shape: string` | 枚举：`free`、`line`、`arrow`、`rect`、`ellipse` |
 | `set_draw_color` | `color: string` | 十六进制颜色 |
@@ -100,6 +103,7 @@ AI 只开放表情包工坊控制，不开放高级编辑器、MP4 转 GIF、首
 | `set_contrast` | `value: int` | `0..200` |
 | `set_saturation` | `value: int` | `0..200` |
 | `open_crop_editor` | 无 | 打开裁剪编辑全屏页 |
+| `close_crop_editor` | 无 | 关闭裁剪编辑全屏页 |
 | `set_crop_ratio` | `ratio: string` | 枚举：`free`、`square`、`wide`、`portrait` |
 | `set_crop_rect` | `x,y,width,height: int` | 设置自定义裁剪选区 |
 | `apply_crop` | 无 | 应用当前裁剪 |
@@ -107,6 +111,7 @@ AI 只开放表情包工坊控制，不开放高级编辑器、MP4 转 GIF、首
 | `apply_platform_preset` | `platform: string` | 枚举：`wechat`、`qq`、`xiaohongshu`、`douyin` |
 | `add_white_border` | 无 | 添加白边 |
 | `add_round_corner` | 无 | 添加圆角 |
+| `close_tool_panel` | 无 | 收起当前工具面板 |
 
 ### 4.6 通用操作
 
